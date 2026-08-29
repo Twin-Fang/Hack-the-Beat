@@ -17,8 +17,10 @@
 
 ```
 party        party_id UUID · code CHAR(6) unique · name VARCHAR(60) · capacity INT · created_at · closed_at NULL
+             🆕 contact_exchange BOOLEAN NOT NULL DEFAULT false
 participant  participant_id UUID · party_id · name VARCHAR(20) · tag_code CHAR(4) (party 내 unique) · mission_target_id UUID NULL · is_host · joined_at
              🆕 character_key VARCHAR(16) NULL · 🆕 interests VARCHAR(100) NULL (쉼표 구분, 최대 3개)
+             🆕 contact VARCHAR(80) NULL (오픈채팅 링크·인스타 @아이디, 선택 제출 시 저장)
 meet         meet_id · party_id · participant_a_id · participant_b_id · created_at   — a ≤ b 정렬, (party, a, b) unique
 pick         pick_id · party_id · from_participant_id · to_participant_id · created_at — (party, from, to) unique
              🆕 pick_level INT NULL (1 가볍게 · 2 반가웠어요 · 3 꼭 다시, NULL = 2)
@@ -32,6 +34,8 @@ pick         pick_id · party_id · from_participant_id · to_participant_id · 
 | 🆕 캐릭터 키는 8종 중 하나. 없거나 다르면 서버가 랜덤 배정 | `FOX FROG PANDA CHICK OCTOPUS LION RABBIT KOALA` |
 | 🆕 관심사는 12종 목록 안에서만, 중복 제거, 3개 초과는 앞 3개 | `게임 러닝 영화 음악 여행 요리 독서 그림 축구 반려동물 카페 개발` |
 | 🆕 정도는 1~3으로 clamp, 없으면 2 | |
+| 🆕 요금: `capacity > FREE_CAPACITY || contactExchange` 이면 9,900원. `priceNotice` = `20명까지 무료 / 21명 이상 또는 연락처 교환 시 9,900원` | 상수 1곳 |
+| 🆕 `contact`는 파티 `contact_exchange`가 true일 때만 저장·응답. false면 요청 값을 무시 | |
 | `character` 는 PostgreSQL 예약어 → 컬럼명 `character_key` | |
 
 ## 3. API
@@ -40,13 +44,13 @@ pick         pick_id · party_id · from_participant_id · to_participant_id · 
 
 | # | 메서드 · 경로 | 요청 | 응답 | 비고 |
 |---|---|---|---|---|
-| 1 | `POST /` | `{ name, hostName?, capacity? , 🆕 hostCharacter?, 🆕 hostInterests?: string[] }` | 201 `PassportResponse` | 호스트 참가자 동시 생성. `capacity` 기본 20 |
+| 1 | `POST /` | `{ name, hostName?, capacity? , 🆕 hostCharacter?, 🆕 hostInterests?: string[], 🆕 contactExchange?: boolean }` | 201 `PassportResponse` | 호스트 참가자 동시 생성. `capacity` 기본 20, `contactExchange` 기본 false |
 | 2 | `GET /{code}` | — | `PartyStatus` | 참가자·만남 수, 종료 여부, 요금 문구 |
 | 3 | `POST /{code}/join` | `{ name, fromTagCode?, 🆕 character?, 🆕 interests?: string[] }` | 201 `PassportResponse` | ⬜ `fromTagCode`가 있으면 초대자와 **자동 상호 태그**(현재). 종료된 파티 400 |
 | 4 | `GET /{code}/passport/{participantId}` | — | `PassportResponse` | 프론트가 4초 폴링 |
 | 5 | `POST /{code}/tag` | `{ participantId, targetTagCode }` | `PassportResponse` | 코드 없음 404, 자기 자신 400 |
 | 6 | `POST /{code}/close` | — | `PartyStatus` | 🔴 호스트 검증 없음 — 아래 5절 |
-| 7 | `POST /{code}/picks` | `{ participantId, targetParticipantIds?: string[], 🆕 picks?: [{ targetTagCode, level }] }` | `MatchResponse` | 🔴 대상을 `tagCode`로 바꾼다(5절). `picks`가 있으면 우선, 없으면 `targetParticipantIds`(level 2)로 호환 |
+| 7 | `POST /{code}/picks` | `{ participantId, targetParticipantIds?: string[], 🆕 picks?: [{ targetTagCode, level }], 🆕 contact?: string }` | `MatchResponse` | 🔴 대상을 `tagCode`로 바꾼다(5절). `picks`가 있으면 우선, 없으면 `targetParticipantIds`(level 2)로 호환 |
 | 8 | `GET /{code}/matches/{participantId}` | — | `MatchResponse` | 상호인 것만 |
 
 ### 응답 스키마 변경 (🆕)
@@ -66,6 +70,8 @@ MetPersonDto += {
   theirLevel?: 1 | 2 | 3              // mutualMatches 항목에서만 — 단독 선택의 정도는 어떤 응답에도 싣지 않는다
 }
 MetPersonDto -= { participantId }     // 🔴 남의 ID 노출 금지 (5절). 프론트는 tagCode로 대상 지정
+PartyStatus, PassportResponse += { contactExchange: boolean }   // 🆕 프론트가 입력칸·가격 문구를 결정
+MetPersonDto += { contact?: string }  // 🆕 mutualMatches 항목 + 파티 contactExchange=true 일 때만. 다른 곳엔 절대 없음
 ```
 
 ## 4. 서비스 규칙
@@ -76,8 +82,8 @@ MetPersonDto -= { participantId }     // 🔴 남의 ID 노출 금지 (5절). �
 | 참여 | 종료 파티 거부 → 참가자 저장(미션 상대 = 직전 참여자) → 직전 참여자 미션 상대 비어 있으면 나로 확정 → ⬜ `fromTagCode` 자동 태그 |
 | 태그 | 파티·내 참가자·대상 코드 조회 → self 거부 → 만남 없으면 생성 → 내 패스포트 반환 |
 | 패스포트 계산 | 만남 수, 진행률 `met / max(1, total−1)`, 증표 6종, 미션 완료 여부, 🆕 성장 단계, 🆕 미션 상대 캐릭터·관심사 |
-| 선택 제출 | 🆕 항목별 `level` 저장(기존 항목은 덮어쓰지 않음 — 취소·수정 불가 유지) → 결과 반환 |
-| 결과 | `findMutualMatches`(양방향 존재하는 상대만) → 🆕 각 상대에 대해 내 pick·상대 pick의 level을 붙임 |
+| 선택 제출 | 🆕 항목별 `level` 저장(기존 항목은 덮어쓰지 않음 — 취소·수정 불가 유지) → 🆕 `contact`가 있고 파티 옵션이 켜져 있으면 내 `participant.contact` 갱신(재제출 시 덮어쓰기 허용) → 결과 반환 |
+| 결과 | `findMutualMatches`(양방향 존재하는 상대만) → 🆕 각 상대에 대해 내 pick·상대 pick의 level을 붙임 → 🆕 파티 옵션이 켜져 있으면 상대 `contact`를 붙임(없으면 null) |
 | 종료 | `closedAt` 설정, 멱등 |
 
 ### ⬜ 결정 대기 — 초대 링크 자동 태그
@@ -94,7 +100,8 @@ MetPersonDto -= { participantId }     // 🔴 남의 ID 노출 금지 (5절). �
 | 태그는 상대 4자리 코드가 있어야 가능(코드는 본인 화면·QR에만 노출) | 코드 교환 뒤 실제 대화 여부는 검증 불가(자기 신고). ⬜A면 원격 참여도 만남으로 기록 |
 | 자기 자신·중복 태그 거부 | 종료 후 태그 거부 없음 — ⬜ `party.isClosed()`면 400, 3줄 |
 | 상호 선택은 서버가 양방향 존재할 때만 반환. 단독 선택·정도는 응답·목록 API에 없음 | DB 접근자는 볼 수 있음(운영자 신뢰 범위) |
-| 참가자 ID는 UUID v4 — 추측 불가 | 🔴 **만난 사람 응답에 남의 `participantId`가 실린다** → 그 ID로 `/picks`·`/tag`를 남 대신 호출해 가짜 상호 선택을 만들 수 있다 |
+| 참가자 ID는 UUID v4 — 추측 불가 | 🔴 **만난 사람 응답에 남의 `participantId`가 실린다** → 그 ID로 `/picks`·`/tag`를 남 대신 호출해 가짜 상호 선택을 만들 수 있다. 🆕 연락처 교환이 켜지면 이 구멍으로 **연락처 탈취**까지 가능 → 연락처 기능 배포 전 수정 필수 |
+| 🆕 연락처는 옵션 켜진 파티에서 상호 선택된 쌍의 응답에만 실린다 | 형식 검증 없음(80자 trim만). 삭제 API 없음 — 기획안에 "파티 종료 후 삭제"라고 쓰지 않는다 |
 | — | 🔴 `/close`는 누구나 호출 가능 — 파티 코드만 알면 종료 |
 
 ### 🔴 수정 요구사항 (서버 30줄)
@@ -134,3 +141,5 @@ MetPersonDto -= { participantId }     // 🔴 남의 ID 노출 금지 (5절). �
 | ⑥ | `picks` 없이 `targetParticipantIds`만 | 호환 동작, level 2 |
 | ⑦ | 비호스트 `/close` | 403 |
 | ⑧ | 종료된 파티에 참여/태그 | 400 |
+| ⑨ | `contactExchange: false` 파티에서 `contact` 포함 제출 | 저장되지 않고 어떤 응답에도 `contact` 없음. `priceNotice` 무료(≤20명) |
+| ⑩ | `contactExchange: true` 파티, A·B 상호 선택 + 각자 연락처 제출, C→A 단독 | A 결과 `mutualMatches[B].contact` = B 연락처, B도 대칭. C 결과에 A 연락처 없음. `priceNotice` 9,900원 |
