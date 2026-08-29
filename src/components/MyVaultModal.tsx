@@ -1,4 +1,5 @@
 import { usePassportStore } from '../stores/usePassportStore'
+import { characterOf } from '../lib/character'
 
 interface MyVaultModalProps {
   isOpen: boolean
@@ -47,7 +48,9 @@ export default function MyVaultModal({ isOpen, onClose }: MyVaultModalProps) {
                 key={`${badge.code}-${badge.partyName}-${idx}`}
                 className="flex items-center gap-3 p-3 bg-base-200 rounded-box border border-base-300"
               >
-                <div className="text-2xl">🏅</div>
+                <div className="text-2xl select-none" role="img" aria-label={characterOf(badge.character).name}>
+                  {characterOf(badge.character).emoji}
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <h4 className="font-bold text-sm truncate">{badge.title}</h4>

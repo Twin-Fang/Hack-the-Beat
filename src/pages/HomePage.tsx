@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { randomCharacter } from '../lib/character'
 import { usePassportStore } from '../stores/usePassportStore'
+import CharacterPicker from '../components/CharacterPicker'
+import InterestPicker from '../components/InterestPicker'
 import MyVaultModal from '../components/MyVaultModal'
 
 export default function HomePage() {
@@ -11,13 +14,31 @@ export default function HomePage() {
 
   const [isVaultOpen, setIsVaultOpen] = useState(false)
   const [partyName, setPartyName] = useState('')
+  const [character, setCharacter] = useState<string>(() => randomCharacter())
+  const [interests, setInterests] = useState<string[]>([])
   const [joinCode, setJoinCode] = useState('')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
+  const handleToggleInterest = (interest: string) => {
+    setInterests((prev) =>
+      prev.includes(interest)
+        ? prev.filter((item) => item !== interest)
+        : prev.length < 3
+        ? [...prev, interest]
+        : prev
+    )
+  }
+
   const createMutation = useMutation({
     mutationFn: (name: string) =>
-      api.createParty({ name, hostName: '호스트', capacity: 30 }),
+      api.createParty({
+        name,
+        hostName: '호스트',
+        capacity: 30,
+        hostCharacter: character,
+        hostInterests: interests,
+      }),
     onSuccess: (data) => {
       saveSession({
         partyCode: data.partyCode,
@@ -25,6 +46,7 @@ export default function HomePage() {
         tagCode: data.tagCode,
         name: data.name,
         isHost: data.isHost,
+        character: data.character || character,
       })
       setToastMessage('초대 링크가 생성되었습니다')
       setTimeout(() => {
@@ -75,7 +97,7 @@ export default function HomePage() {
           </p>
 
           {/* 파티 생성 — 모달 없이 첫 화면에서 바로 완결시킨다 (클릭 한 번이면 1단계 끝) */}
-          <form onSubmit={handleCreateSubmit} className="space-y-3 text-left">
+          <form onSubmit={handleCreateSubmit} className="space-y-4 text-left">
             <div>
               <label className="label" htmlFor="partyName">
                 <span className="label-text font-medium">파티 이름</span>
@@ -93,6 +115,20 @@ export default function HomePage() {
                 onChange={(e) => setPartyName(e.target.value)}
               />
             </div>
+
+            {/* 내 캐릭터 선택 */}
+            <CharacterPicker
+              selected={character}
+              onSelect={setCharacter}
+              label="내 캐릭터 선택"
+            />
+
+            {/* 관심사 선택 */}
+            <InterestPicker
+              selected={interests}
+              onToggle={handleToggleInterest}
+              max={3}
+            />
 
             {formError ? <p className="text-error text-xs">{formError}</p> : null}
 

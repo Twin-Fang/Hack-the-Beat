@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
 import { api, type PassportResponse } from '../lib/api'
+import { randomCharacter, growthOf, characterOf, commonInterests } from '../lib/character'
 import { usePassportStore } from '../stores/usePassportStore'
+import CharacterAvatar from '../components/CharacterAvatar'
+import CharacterPicker from '../components/CharacterPicker'
+import InterestPicker from '../components/InterestPicker'
 import BadgeList from '../components/BadgeList'
 import TagModal from '../components/TagModal'
 import MyVaultModal from '../components/MyVaultModal'
@@ -23,10 +27,24 @@ export default function PartyPassportPage() {
   const accumulateBadges = usePassportStore((s) => s.accumulateBadges)
 
   const [nameInput, setNameInput] = useState('')
+  const [joinCharacter, setJoinCharacter] = useState<string>(() => randomCharacter())
+  const [joinInterests, setJoinInterests] = useState<string[]>([])
   const [joinError, setJoinError] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isTagModalOpen, setIsTagModalOpen] = useState(false)
   const [isVaultOpen, setIsVaultOpen] = useState(false)
+
+  const prevStageRef = useRef<number | null>(null)
+
+  const handleToggleJoinInterest = (interest: string) => {
+    setJoinInterests((prev) =>
+      prev.includes(interest)
+        ? prev.filter((item) => item !== interest)
+        : prev.length < 3
+        ? [...prev, interest]
+        : prev
+    )
+  }
 
   // 토스트 메시지 헬퍼
   const showToast = (msg: string) => {
@@ -63,12 +81,29 @@ export default function PartyPassportPage() {
     }
   }, [passportQuery.data, accumulateBadges])
 
+  // 성장 단계 변화 감지 토스트 (🌱 새싹 -> 🌿 잎 -> 🌸 꽃)
+  useEffect(() => {
+    if (passportQuery.data) {
+      const newStage = growthOf(passportQuery.data.metCount).stage
+      if (prevStageRef.current !== null && prevStageRef.current < newStage) {
+        if (newStage === 2) {
+          showToast('캐릭터가 잎으로 자랐어요')
+        } else if (newStage === 3) {
+          showToast('캐릭터가 꽃으로 자랐어요')
+        }
+      }
+      prevStageRef.current = newStage
+    }
+  }, [passportQuery.data])
+
   // 파티 참여 뮤테이션
   const joinMutation = useMutation({
     mutationFn: (name: string) =>
       api.joinParty(partyCode, {
         name,
         fromTagCode: fromTag,
+        character: joinCharacter,
+        interests: joinInterests,
       }),
     onSuccess: (data: PassportResponse) => {
       saveSession({
@@ -77,7 +112,7 @@ export default function PartyPassportPage() {
         tagCode: data.tagCode,
         name: data.name,
         isHost: data.isHost,
-        character: data.character,
+        character: data.character || joinCharacter,
       })
       showToast('참여 완료')
       navigate(`/party/${partyCode}`, { replace: true })
@@ -149,7 +184,7 @@ export default function PartyPassportPage() {
           </div>
         ) : null}
 
-        <div className="card w-full max-w-sm bg-base-100 shadow-xl border border-base-300">
+        <div className="card w-full max-w-md bg-base-100 shadow-xl border border-base-300">
           <div className="card-body p-6">
             <div className="text-center mb-4">
               <span className="badge badge-primary badge-outline font-mono text-sm tracking-wider mb-2">
@@ -182,6 +217,20 @@ export default function PartyPassportPage() {
                   autoFocus
                 />
               </div>
+
+              {/* 내 캐릭터 선택 */}
+              <CharacterPicker
+                selected={joinCharacter}
+                onSelect={setJoinCharacter}
+                label="내 캐릭터 선택"
+              />
+
+              {/* 관심사 선택 */}
+              <InterestPicker
+                selected={joinInterests}
+                onToggle={handleToggleJoinInterest}
+                max={3}
+              />
 
               {joinError ? (
                 <p className="text-error text-xs">{joinError}</p>
@@ -314,13 +363,37 @@ export default function PartyPassportPage() {
               </span>
             </div>
 
+            {/* 대형 캐릭터 아바타 및 성장 단계 */}
+            <div className="my-2">
+              <CharacterAvatar
+                characterKey={passport.character || session?.character}
+                fallbackSeed={passport.tagCode}
+                size="lg"
+                metCount={passport.metCount}
+                showGrowth={true}
+                showLabel={true}
+              />
+            </div>
+
             <div className="flex items-center justify-center gap-2">
               <h2 className="text-2xl font-black">{passport.name}</h2>
               <span className="badge badge-success badge-sm font-semibold">
                 참여 완료
               </span>
             </div>
-            <p className="text-xs text-base-content/60 mb-4">
+
+            {/* 내 관심사 태그 */}
+            {passport.interests && passport.interests.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 justify-center mt-2" data-testid="my-interests">
+                {passport.interests.map((it) => (
+                  <span key={it} className="badge badge-sm badge-outline badge-primary font-medium">
+                    {it}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            <p className="text-xs text-base-content/60 my-3">
               상대방 카메라로 내 QR을 비추거나 4자리 코드를 알려주세요!
             </p>
 
@@ -394,21 +467,30 @@ export default function PartyPassportPage() {
         {passport.missionTargetName ? (
           <div className="card bg-gradient-to-r from-primary/15 to-secondary/15 border border-primary/20 shadow-sm">
             <div className="card-body p-4 flex flex-row items-center justify-between">
-              <div>
+              <div className="space-y-1">
                 <span className="badge badge-xs badge-secondary mb-1">
                   오늘의 1:1 미션
                 </span>
                 <h4 className="font-bold text-sm">
                   {passport.missionTargetName}님을 찾아 대화해 보세요!
                 </h4>
-                <p className="text-xs text-base-content/70 mt-0.5">
+                {commonInterests(passport.interests || [], passport.missionTargetInterests || []).length > 0 ? (
+                  <p className="text-xs text-primary font-bold">
+                    공통 관심사: {commonInterests(passport.interests || [], passport.missionTargetInterests || []).join(', ')} — 이걸로 말 걸어 보세요
+                  </p>
+                ) : passport.missionTargetInterests && passport.missionTargetInterests.length > 0 ? (
+                  <p className="text-xs text-base-content/70">
+                    상대 관심사: {passport.missionTargetInterests.join(', ')}
+                  </p>
+                ) : null}
+                <p className="text-xs text-base-content/60">
                   {passport.missionCleared
                     ? '미션 완료! 특별 증표가 활성화되었습니다. 🎯'
                     : '대화를 나누고 QR 또는 코드를 태그하세요.'}
                 </p>
               </div>
-              <div className="text-3xl">
-                {passport.missionCleared ? '🎉' : '🕵️'}
+              <div className="text-3xl select-none" role="img" aria-label="미션 대상 캐릭터">
+                {passport.missionCleared ? '🎉' : characterOf(passport.missionTargetCharacter).emoji}
               </div>
             </div>
           </div>
@@ -440,27 +522,52 @@ export default function PartyPassportPage() {
               </div>
             ) : (
               <div className="divide-y divide-base-200 max-h-56 overflow-y-auto">
-                {passport.metPersons.map((p) => (
-                  <div
-                    key={p.tagCode}
-                    className="py-2.5 flex justify-between items-center"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold text-xs">
-                        {p.name.slice(0, 1)}
+                {passport.metPersons.map((p) => {
+                  const common = commonInterests(passport.interests || [], p.interests || [])
+
+                  return (
+                    <div
+                      key={p.tagCode}
+                      className="py-2.5 flex justify-between items-center"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <CharacterAvatar
+                          size="sm"
+                          characterKey={p.character}
+                          fallbackSeed={p.tagCode}
+                        />
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-sm">{p.name}</p>
+                            <span className="text-xs font-mono text-base-content/50">
+                              #{p.tagCode}
+                            </span>
+                          </div>
+                          {common.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {common.map((c) => (
+                                <span key={c} className="badge badge-xs badge-secondary font-medium">
+                                  공통: {c}
+                                </span>
+                              ))}
+                            </div>
+                          ) : p.interests && p.interests.length > 0 ? (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {p.interests.map((it) => (
+                                <span key={it} className="badge badge-xs badge-ghost text-base-content/60">
+                                  {it}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm">{p.name}</p>
-                        <p className="text-xs font-mono text-base-content/50">
-                          #{p.tagCode}
-                        </p>
-                      </div>
+                      <span className="text-xs text-base-content/50">
+                        {p.metAt}
+                      </span>
                     </div>
-                    <span className="text-xs text-base-content/50">
-                      {p.metAt}
-                    </span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

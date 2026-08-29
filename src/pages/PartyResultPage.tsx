@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
+import { characterOf, LEVELS } from '../lib/character'
 import { usePassportStore } from '../stores/usePassportStore'
+import LevelPicker from '../components/LevelPicker'
 import MyVaultModal from '../components/MyVaultModal'
 
 export default function PartyResultPage() {
@@ -13,6 +15,7 @@ export default function PartyResultPage() {
 
   const session = usePassportStore((s) => s.getSession(partyCode))
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [selectedLevels, setSelectedLevels] = useState<Record<string, number>>({})
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isVaultOpen, setIsVaultOpen] = useState(false)
 
@@ -30,11 +33,14 @@ export default function PartyResultPage() {
 
   // 픽 제출 뮤테이션
   const submitMutation = useMutation({
-    mutationFn: (ids: string[]) =>
+    mutationFn: () =>
       api.submitPicks(partyCode, {
         participantId: session!.participantId,
-        picks: ids.map((tagCode) => ({ targetTagCode: tagCode, level: 2 })),
-        targetParticipantIds: ids,
+        picks: selectedIds.map((tagCode) => ({
+          targetTagCode: tagCode,
+          level: selectedLevels[tagCode] ?? 2,
+        })),
+        targetParticipantIds: selectedIds,
       }),
     onSuccess: (data) => {
       queryClient.setQueryData(
@@ -84,17 +90,29 @@ export default function PartyResultPage() {
   const allMet = result.allMetPersons || []
   const mutualMatches = result.mutualMatches || []
 
-  const toggleSelect = (id: string) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter((item) => item !== id))
+  const toggleSelect = (tagCode: string) => {
+    if (selectedIds.includes(tagCode)) {
+      setSelectedIds(selectedIds.filter((item) => item !== tagCode))
     } else {
-      setSelectedIds([...selectedIds, id])
+      setSelectedIds([...selectedIds, tagCode])
+      if (!selectedLevels[tagCode]) {
+        setSelectedLevels((prev) => ({ ...prev, [tagCode]: 2 }))
+      }
     }
+  }
+
+  const handleLevelChange = (tagCode: string, level: number) => {
+    setSelectedLevels((prev) => ({ ...prev, [tagCode]: level }))
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    submitMutation.mutate(selectedIds)
+    submitMutation.mutate()
+  }
+
+  const getLevelText = (level?: number) => {
+    const found = LEVELS.find((l) => l.level === level)
+    return found ? found.text : '🙌 반가웠어요'
   }
 
   return (
@@ -144,35 +162,65 @@ export default function PartyResultPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-3">
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                   {allMet.map((person) => {
                     const isChecked = selectedIds.includes(person.tagCode)
+                    const char = characterOf(person.character, person.tagCode)
+
                     return (
-                      <label
+                      <div
                         key={person.tagCode}
-                        className={`flex items-center justify-between p-3 rounded-box border cursor-pointer transition-all ${
+                        className={`p-3 rounded-box border transition-all ${
                           isChecked
                             ? 'bg-primary/10 border-primary shadow-sm'
                             : 'bg-base-200/60 border-base-300 hover:bg-base-200'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            className="checkbox checkbox-primary"
-                            checked={isChecked}
-                            onChange={() => toggleSelect(person.tagCode)}
-                          />
-                          <div>
-                            <span className="font-bold text-sm">
-                              {person.name}
-                            </span>
-                            <span className="text-xs text-base-content/50 ml-2 font-mono">
-                              #{person.tagCode}
-                            </span>
+                        <div
+                          className="flex items-center justify-between cursor-pointer select-none"
+                          onClick={() => toggleSelect(person.tagCode)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              className="checkbox checkbox-primary"
+                              checked={isChecked}
+                              onChange={() => toggleSelect(person.tagCode)}
+                              aria-label={`${person.name} 선택`}
+                            />
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="text-xl select-none"
+                                role="img"
+                                aria-label={char.name}
+                              >
+                                {char.emoji}
+                              </span>
+                              <div>
+                                <span className="font-bold text-sm">
+                                  {person.name}
+                                </span>
+                                <span className="text-xs text-base-content/50 ml-2 font-mono">
+                                  #{person.tagCode}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </label>
+
+                        {/* 선택 시 다시 만나고 싶은 정도 선택기 노출 */}
+                        {isChecked ? (
+                          <div className="mt-3 pt-2.5 border-t border-primary/20">
+                            <LevelPicker
+                              level={selectedLevels[person.tagCode] ?? 2}
+                              onChange={(lvl) =>
+                                handleLevelChange(person.tagCode, lvl)
+                              }
+                              label="다시 만나고 싶은 정도"
+                            />
+                          </div>
+                        ) : null}
+                      </div>
                     )
                   })}
                 </div>
@@ -212,23 +260,63 @@ export default function PartyResultPage() {
                 상대방도 선택을 제출하면 이곳에 서로의 이름이 나타납니다.
               </div>
             ) : (
-              <div className="space-y-2">
-                {mutualMatches.map((m) => (
-                  <div
-                    key={m.tagCode}
-                    className="p-3.5 bg-gradient-to-r from-primary/15 to-secondary/15 rounded-box border border-primary/30 flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">💖</span>
-                      <div>
-                        <h4 className="font-bold text-sm">{m.name}</h4>
-                        <p className="text-xs text-primary font-medium">
-                          서로를 다시 만나고 싶어 합니다!
-                        </p>
+              <div className="space-y-3">
+                {mutualMatches.map((m) => {
+                  const myLevelText = getLevelText(m.myLevel)
+                  const theirLevelText = getLevelText(m.theirLevel)
+                  const char = characterOf(m.character, m.tagCode)
+
+                  return (
+                    <div
+                      key={m.tagCode}
+                      className="p-3.5 bg-gradient-to-r from-primary/15 to-secondary/15 rounded-box border border-primary/30 space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <span
+                            className="text-2xl select-none"
+                            role="img"
+                            aria-label={char.name}
+                          >
+                            {char.emoji}
+                          </span>
+                          <div>
+                            <h4 className="font-bold text-sm">{m.name}</h4>
+                            <p className="text-xs text-primary font-medium">
+                              서로를 다시 만나고 싶어 합니다!
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-2xl select-none">💖</span>
                       </div>
+
+                      {/* 양쪽의 다시 만나고 싶은 정도 */}
+                      <div className="bg-base-100/90 rounded-box p-2.5 text-xs flex items-center justify-between border border-base-300">
+                        <span className="font-semibold text-primary">
+                          나 {myLevelText}
+                        </span>
+                        <span className="text-base-content/40">·</span>
+                        <span className="font-semibold text-secondary">
+                          상대 {theirLevelText}
+                        </span>
+                      </div>
+
+                      {/* 관심사 */}
+                      {m.interests && m.interests.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 pt-0.5">
+                          {m.interests.map((it) => (
+                            <span
+                              key={it}
+                              className="badge badge-xs badge-outline badge-primary font-medium"
+                            >
+                              {it}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>
