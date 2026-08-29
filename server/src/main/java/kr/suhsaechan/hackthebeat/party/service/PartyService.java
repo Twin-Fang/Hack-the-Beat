@@ -51,11 +51,18 @@ public class PartyService {
         String hostName = (request.hostName() == null || request.hostName().isBlank())
                 ? "호스트" : request.hostName().trim();
 
+        String hostCharacter = (request.hostCharacter() == null || request.hostCharacter().isBlank())
+                ? "FOX" : request.hostCharacter().trim();
+        String hostInterests = (request.hostInterests() != null && !request.hostInterests().isEmpty())
+                ? String.join(",", request.hostInterests()) : null;
+
         Participant host = participantRepository.save(Participant.builder()
                 .party(party)
                 .name(hostName)
                 .tagCode(generateUniqueTagCode(party))
                 .isHost(true)
+                .characterKey(hostCharacter)
+                .interests(hostInterests)
                 .build());
 
         return buildPassport(party, host);
@@ -87,12 +94,19 @@ public class PartyService {
         // 직전 참여자를 미션 상대로 지정
         Optional<Participant> lastParticipantOpt = participantRepository.findTopByPartyOrderByJoinedAtDesc(party);
 
+        String character = (request.character() == null || request.character().isBlank())
+                ? "FOX" : request.character().trim();
+        String interests = (request.interests() != null && !request.interests().isEmpty())
+                ? String.join(",", request.interests()) : null;
+
         Participant participant = participantRepository.save(Participant.builder()
                 .party(party)
                 .name(request.name().trim())
                 .tagCode(generateUniqueTagCode(party))
                 .missionTargetParticipantId(lastParticipantOpt.map(Participant::getParticipantId).orElse(null))
                 .isHost(false)
+                .characterKey(character)
+                .interests(interests)
                 .build());
 
         // 첫 번째 호스트에게 두 번째 참여자를 미션 상대로 연결
@@ -173,7 +187,15 @@ public class PartyService {
 
         List<Participant> mutualMatches = pickRepository.findMutualMatches(party, me);
         List<MetPersonDto> matchDtos = mutualMatches.stream()
-                .map(p -> new MetPersonDto(p.getParticipantId().toString(), p.getName(), p.getTagCode(), null))
+                .map(p -> new MetPersonDto(
+                        p.getName(),
+                        p.getTagCode(),
+                        null,
+                        p.getCharacterKey(),
+                        parseInterests(p.getInterests()),
+                        null,
+                        null
+                ))
                 .toList();
 
         List<MetPersonDto> allMet = getMyMetPersons(party, me);
@@ -208,11 +230,16 @@ public class PartyService {
 
         boolean missionCleared = false;
         String missionTargetName = null;
+        String missionTargetCharacter = null;
+        List<String> missionTargetInterests = List.of();
 
         if (me.getMissionTargetParticipantId() != null) {
             Optional<Participant> targetOpt = participantRepository.findById(me.getMissionTargetParticipantId());
             if (targetOpt.isPresent()) {
-                missionTargetName = targetOpt.get().getName();
+                Participant target = targetOpt.get();
+                missionTargetName = target.getName();
+                missionTargetCharacter = target.getCharacterKey();
+                missionTargetInterests = parseInterests(target.getInterests());
             }
         }
 
@@ -220,10 +247,13 @@ public class PartyService {
             Participant other = m.getParticipantA().getParticipantId().equals(me.getParticipantId())
                     ? m.getParticipantB() : m.getParticipantA();
             metPersons.add(new MetPersonDto(
-                    other.getParticipantId().toString(),
                     other.getName(),
                     other.getTagCode(),
-                    m.getCreatedAt().format(TIME_FORMAT)
+                    m.getCreatedAt().format(TIME_FORMAT),
+                    other.getCharacterKey(),
+                    parseInterests(other.getInterests()),
+                    null,
+                    null
             ));
             if (me.getMissionTargetParticipantId() != null &&
                 other.getParticipantId().equals(me.getMissionTargetParticipantId())) {
@@ -267,7 +297,12 @@ public class PartyService {
                 metPersons,
                 missionTargetName,
                 missionCleared,
-                buildPriceNotice(party.getCapacity())
+                buildPriceNotice(party.getCapacity()),
+                me.getCharacterKey(),
+                parseInterests(me.getInterests()),
+                calculateGrowthStage(metCount),
+                missionTargetCharacter,
+                missionTargetInterests
         );
     }
 
@@ -278,13 +313,32 @@ public class PartyService {
             Participant other = m.getParticipantA().getParticipantId().equals(me.getParticipantId())
                     ? m.getParticipantB() : m.getParticipantA();
             metPersons.add(new MetPersonDto(
-                    other.getParticipantId().toString(),
                     other.getName(),
                     other.getTagCode(),
-                    m.getCreatedAt().format(TIME_FORMAT)
+                    m.getCreatedAt().format(TIME_FORMAT),
+                    other.getCharacterKey(),
+                    parseInterests(other.getInterests()),
+                    null,
+                    null
             ));
         }
         return metPersons;
+    }
+
+    private List<String> parseInterests(String interests) {
+        if (interests == null || interests.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(interests.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    private int calculateGrowthStage(int metCount) {
+        if (metCount >= 3) return 3;
+        if (metCount >= 1) return 2;
+        return 1;
     }
 
     private Party findParty(String code) {

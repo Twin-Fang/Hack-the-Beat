@@ -38,16 +38,24 @@ public class Participant {
     @Column(name = "is_host", nullable = false)
     private boolean isHost;
 
+    @Column(name = "character_key", length = 16)
+    private String characterKey;
+
+    @Column(length = 100)
+    private String interests;
+
     @Column(nullable = false)
     private LocalDateTime joinedAt;
 
     @Builder
-    private Participant(Party party, String name, String tagCode, UUID missionTargetParticipantId, boolean isHost) {
+    private Participant(Party party, String name, String tagCode, UUID missionTargetParticipantId, boolean isHost, String characterKey, String interests) {
         this.party = party;
         this.name = name;
         this.tagCode = tagCode;
         this.missionTargetParticipantId = missionTargetParticipantId;
         this.isHost = isHost;
+        this.characterKey = characterKey;
+        this.interests = interests;
         this.joinedAt = LocalDateTime.now();
     }
 

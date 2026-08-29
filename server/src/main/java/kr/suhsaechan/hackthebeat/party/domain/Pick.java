@@ -32,14 +32,18 @@ public class Pick {
     @JoinColumn(name = "to_participant_id")
     private Participant toParticipant;
 
+    @Column(name = "pick_level", nullable = false)
+    private Integer pickLevel;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @Builder
-    private Pick(Party party, Participant fromParticipant, Participant toParticipant) {
+    private Pick(Party party, Participant fromParticipant, Participant toParticipant, Integer pickLevel) {
         this.party = party;
         this.fromParticipant = fromParticipant;
         this.toParticipant = toParticipant;
+        this.pickLevel = pickLevel != null ? pickLevel : 2;
         this.createdAt = LocalDateTime.now();
     }
 }

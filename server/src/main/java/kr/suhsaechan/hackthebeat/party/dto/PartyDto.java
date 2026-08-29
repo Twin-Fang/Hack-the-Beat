@@ -15,14 +15,24 @@ public final class PartyDto {
     public record CreatePartyRequest(
             @NotBlank(message = "파티 이름을 입력해주세요") @Size(max = 60) String name,
             String hostName,
-            @Min(1) @Max(500) Integer capacity
+            @Min(1) @Max(500) Integer capacity,
+            String hostCharacter,
+            List<String> hostInterests
     ) {
+        public CreatePartyRequest(String name, String hostName, Integer capacity) {
+            this(name, hostName, capacity, null, null);
+        }
     }
 
     public record JoinRequest(
             @NotBlank(message = "이름을 입력해주세요") @Size(max = 20) String name,
-            String fromTagCode
+            String fromTagCode,
+            String character,
+            List<String> interests
     ) {
+        public JoinRequest(String name, String fromTagCode) {
+            this(name, fromTagCode, null, null);
+        }
     }
 
     public record TagRequest(
@@ -31,10 +41,23 @@ public final class PartyDto {
     ) {
     }
 
+    public record PickItem(
+            @NotBlank String targetTagCode,
+            Integer level
+    ) {
+        public PickItem(String targetTagCode) {
+            this(targetTagCode, 2);
+        }
+    }
+
     public record SubmitPicksRequest(
             @NotBlank(message = "내 참여자 정보가 필요합니다") String participantId,
-            @NotNull List<String> targetParticipantIds
+            List<PickItem> picks,
+            List<String> targetParticipantIds
     ) {
+        public SubmitPicksRequest(String participantId, List<String> targetParticipantIds) {
+            this(participantId, null, targetParticipantIds);
+        }
     }
 
     public record BadgeDto(
@@ -46,11 +69,17 @@ public final class PartyDto {
     }
 
     public record MetPersonDto(
-            String participantId,
             String name,
             String tagCode,
-            String metAt
+            String metAt,
+            String character,
+            List<String> interests,
+            Integer myLevel,
+            Integer theirLevel
     ) {
+        public MetPersonDto(String name, String tagCode, String metAt) {
+            this(name, tagCode, metAt, null, List.of(), null, null);
+        }
     }
 
     public record PassportResponse(
@@ -68,7 +97,12 @@ public final class PartyDto {
             List<MetPersonDto> metPersons,
             String missionTargetName,
             boolean missionCleared,
-            String priceNotice
+            String priceNotice,
+            String character,
+            List<String> interests,
+            int growthStage,
+            String missionTargetCharacter,
+            List<String> missionTargetInterests
     ) {
     }
 
