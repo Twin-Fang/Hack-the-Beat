@@ -11,6 +11,7 @@
 | [docs/judging-criteria.md](docs/judging-criteria.md) | **공식 채점 루브릭** 12항목 앵커·상한 규칙·주제 게이트 배율, 주제 분석과 아이템 선정 필터, Playwright 대응 규칙 |
 | [docs/submission-guide.md](docs/submission-guide.md) | **제출 페이지 실물** 기준 필드별 작성법, 글자 제한(기획안 8,000 / 스크립트 4,000), 3단계·기획안·스크립트 템플릿, 직전 체크리스트 |
 | [docs/personas/](docs/personas/README.md) | AI 심사관 3명(창업가·엔지니어·투자자) **추정 페르소나** — 렌즈별 질문·근거·감점 트리거·자가 점검표·가채점표 |
+| [docs/thinking/](docs/thinking/README.md) | 팀원별 **주제 제안·확정안** — 현재 확정: PARTY MOOD (파티 감정 온도계) |
 | [AGENTS.md](AGENTS.md) | 작업 규칙 — 스택, 디렉토리, 코드 규칙, 커밋·배포 흐름, 심사 대응 |
 | [docs/antigravity-101.md](docs/antigravity-101.md) · [docs/ralph-loop.md](docs/ralph-loop.md) | 세션 자료 정리 (참고용) |
 
