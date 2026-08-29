@@ -51,6 +51,12 @@ public final class PartyDto {
     ) {
     }
 
+    public record UpdateInstagramRequest(
+            @Size(max = 30, message = "인스타그램 아이디는 30자를 넘을 수 없습니다") String instagramId,
+            boolean consent
+    ) {
+    }
+
     public record PickItem(
             @NotBlank String targetTagCode,
             Integer level
@@ -85,10 +91,11 @@ public final class PartyDto {
             String character,
             List<String> interests,
             Integer myLevel,
-            Integer theirLevel
+            Integer theirLevel,
+            String instagramId
     ) {
         public MetPersonDto(String name, String tagCode, String metAt) {
-            this(name, tagCode, metAt, null, List.of(), null, null);
+            this(name, tagCode, metAt, null, List.of(), null, null, null);
         }
     }
 
@@ -112,7 +119,8 @@ public final class PartyDto {
             List<String> interests,
             int growthStage,
             String missionTargetCharacter,
-            List<String> missionTargetInterests
+            List<String> missionTargetInterests,
+            String instagramId
     ) {
     }
 

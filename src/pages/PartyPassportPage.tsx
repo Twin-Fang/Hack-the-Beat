@@ -33,6 +33,10 @@ export default function PartyPassportPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isTagModalOpen, setIsTagModalOpen] = useState(false)
   const [isVaultOpen, setIsVaultOpen] = useState(false)
+  const [isEditingInstagram, setIsEditingInstagram] = useState(false)
+  const [instagramInput, setInstagramInput] = useState('')
+  const [instagramConsent, setInstagramConsent] = useState(false)
+  const [instagramError, setInstagramError] = useState<string | null>(null)
 
   const prevStageRef = useRef<number | null>(null)
 
@@ -151,6 +155,31 @@ export default function PartyPassportPage() {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.tagCode, fromTag])
+
+  // 인스타그램 아이디 등록/수정 뮤테이션 (선택 입력, 최초 등록 시 동의 필요)
+  const instagramMutation = useMutation({
+    mutationFn: (data: { instagramId: string | null; consent: boolean }) =>
+      api.updateInstagram(partyCode, session!.participantId, data),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['passport', partyCode, session?.participantId], data)
+      setIsEditingInstagram(false)
+      setInstagramError(null)
+      showToast(data.instagramId ? '인스타그램이 등록되었습니다' : '인스타그램이 삭제되었습니다')
+    },
+    onError: (err) => {
+      setInstagramError(err instanceof Error ? err.message : '저장에 실패했습니다.')
+    },
+  })
+
+  const handleSaveInstagram = () => {
+    const trimmed = instagramInput.trim()
+    if (trimmed && !instagramConsent) {
+      setInstagramError('개인정보 수집 동의가 필요합니다.')
+      return
+    }
+    setInstagramError(null)
+    instagramMutation.mutate({ instagramId: trimmed || null, consent: instagramConsent })
+  }
 
   // 파티 종료 뮤테이션
   const closeMutation = useMutation({
@@ -458,6 +487,88 @@ export default function PartyPassportPage() {
           </div>
         </div>
 
+        {/* 인스타그램 아이디 (선택) — 만난 사람·상호매칭 상대에게만 공개 */}
+        <div className="card bg-base-100 shadow-md border border-base-300">
+          <div className="card-body p-5">
+            <h3 className="font-bold text-base mb-1">연락처 (선택)</h3>
+            {passport.instagramId && !isEditingInstagram ? (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">
+                  📷 @{passport.instagramId}
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => {
+                    setInstagramInput(passport.instagramId || '')
+                    setInstagramConsent(true)
+                    setInstagramError(null)
+                    setIsEditingInstagram(true)
+                  }}
+                >
+                  수정
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs text-base-content/60">
+                  등록하면 만난 사람·상호매칭된 상대에게만 공개됩니다.
+                </p>
+                <input
+                  type="text"
+                  aria-label="인스타그램 아이디"
+                  placeholder="예: hackthebeat"
+                  className="input input-bordered input-sm w-full"
+                  value={instagramInput}
+                  onChange={(e) => setInstagramInput(e.target.value)}
+                />
+                <label className="flex items-start gap-2 text-xs text-base-content/70 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="checkbox checkbox-xs mt-0.5"
+                    checked={instagramConsent}
+                    onChange={(e) => setInstagramConsent(e.target.checked)}
+                  />
+                  <span>
+                    개인정보 수집(인스타그램 아이디)에 동의합니다. 수집 목적은 매칭 상대와의 연락
+                    수단 제공이며, 만난 사람 또는 상호매칭된 상대에게만 공개됩니다. 미입력 시에도
+                    서비스 이용에 제약이 없습니다.
+                  </span>
+                </label>
+                {instagramError ? (
+                  <p className="text-error text-xs">{instagramError}</p>
+                ) : null}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={handleSaveInstagram}
+                    disabled={instagramMutation.isPending}
+                  >
+                    {instagramMutation.isPending ? (
+                      <span className="loading loading-spinner loading-xs" />
+                    ) : (
+                      '저장'
+                    )}
+                  </button>
+                  {isEditingInstagram ? (
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => {
+                        setIsEditingInstagram(false)
+                        setInstagramError(null)
+                      }}
+                    >
+                      취소
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* 진행률 & 만난 사람 카운트 (시나리오 3단계 완벽 대응) */}
         <div className="card bg-base-100 shadow-md border border-base-300">
           <div className="card-body p-5">
@@ -587,6 +698,11 @@ export default function PartyPassportPage() {
                             <span className="text-xs font-mono text-base-content/50">
                               #{p.tagCode}
                             </span>
+                            {p.instagramId ? (
+                              <span className="text-xs text-primary font-medium">
+                                📷 @{p.instagramId}
+                              </span>
+                            ) : null}
                           </div>
                           {common.length > 0 ? (
                             <div className="flex flex-wrap gap-1 mt-0.5">

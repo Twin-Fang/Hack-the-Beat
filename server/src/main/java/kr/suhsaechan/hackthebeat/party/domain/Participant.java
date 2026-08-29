@@ -47,6 +47,14 @@ public class Participant {
     @Column(nullable = false)
     private LocalDateTime joinedAt;
 
+    /** 선택 입력 연락 수단(인스타그램 아이디). 만난 사람·상호매칭 상대에게만 노출된다 */
+    @Column(name = "instagram_id", length = 30)
+    private String instagramId;
+
+    /** 인스타그램 아이디 최초 등록 시점 — 개인정보 수집 동의 이력 근거 */
+    @Column(name = "instagram_consented_at")
+    private LocalDateTime instagramConsentedAt;
+
     @Builder
     private Participant(Party party, String name, String tagCode, UUID missionTargetParticipantId, boolean isHost, String characterKey, String interests) {
         this.party = party;
@@ -63,5 +71,16 @@ public class Participant {
         if (this.missionTargetParticipantId == null) {
             this.missionTargetParticipantId = targetId;
         }
+    }
+
+    /** null/빈 문자열이면 등록 해제로 취급하고 동의 시점도 지운다 */
+    public void updateInstagramId(String instagramId) {
+        if (instagramId == null || instagramId.isBlank()) {
+            this.instagramId = null;
+            this.instagramConsentedAt = null;
+            return;
+        }
+        this.instagramId = instagramId;
+        this.instagramConsentedAt = LocalDateTime.now();
     }
 }

@@ -319,6 +319,11 @@ export default function PartyResultPage() {
                             <p className="text-xs text-primary font-medium">
                               서로를 다시 만나고 싶어 합니다!
                             </p>
+                            {m.instagramId ? (
+                              <p className="text-xs font-semibold mt-0.5">
+                                📷 @{m.instagramId}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                         <span className="text-2xl select-none">💖</span>

@@ -167,6 +167,35 @@ public class PartyService {
     }
 
     @Transactional
+    public PassportResponse updateInstagram(String code, String participantId, UpdateInstagramRequest request) {
+        Party party = findParty(code);
+        Participant me = findParticipantInParty(party, participantId);
+
+        String normalized = normalizeInstagramId(request.instagramId());
+        // 실제로 값을 등록/변경할 때만 동의가 필요하다 — 지우는 요청(null/빈 문자열)은 동의 여부와 무관하다
+        if (normalized != null && !request.consent()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "개인정보 수집 동의가 필요합니다");
+        }
+
+        me.updateInstagramId(normalized);
+        return buildPassport(party, me);
+    }
+
+    private String normalizeInstagramId(String instagramId) {
+        if (instagramId == null) {
+            return null;
+        }
+        String trimmed = instagramId.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        if (trimmed.startsWith("@")) {
+            trimmed = trimmed.substring(1);
+        }
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    @Transactional
     public PartyStatus close(String code, String participantId) {
         Party party = findParty(code);
         // participantId 미제공 시 검증을 건너뛰면 코드만 알아도 누구나 종료 가능해지므로 기본 거부한다
@@ -260,7 +289,8 @@ public class PartyService {
                         p.getCharacterKey(),
                         parseInterests(p.getInterests()),
                         pickLevelMap.get(me.getParticipantId() + "->" + p.getParticipantId()),
-                        pickLevelMap.get(p.getParticipantId() + "->" + me.getParticipantId())
+                        pickLevelMap.get(p.getParticipantId() + "->" + me.getParticipantId()),
+                        p.getInstagramId()
                 ))
                 .toList();
 
@@ -349,7 +379,8 @@ public class PartyService {
                     other.getCharacterKey(),
                     parseInterests(other.getInterests()),
                     null,
-                    null
+                    null,
+                    other.getInstagramId()
             ));
             if (me.getMissionTargetParticipantId() != null &&
                 other.getParticipantId().equals(me.getMissionTargetParticipantId())) {
@@ -398,7 +429,8 @@ public class PartyService {
                 parseInterests(me.getInterests()),
                 calculateGrowthStage(metCount),
                 missionTargetCharacter,
-                missionTargetInterests
+                missionTargetInterests,
+                me.getInstagramId()
         );
     }
 
@@ -415,7 +447,8 @@ public class PartyService {
                     other.getCharacterKey(),
                     parseInterests(other.getInterests()),
                     null,
-                    null
+                    null,
+                    other.getInstagramId()
             ));
         }
         return metPersons;

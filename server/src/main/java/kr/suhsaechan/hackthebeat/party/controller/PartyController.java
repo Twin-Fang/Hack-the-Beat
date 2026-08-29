@@ -41,6 +41,15 @@ public class PartyController {
         return partyService.tagPerson(code, request);
     }
 
+    @PutMapping("/{code}/passport/{participantId}/instagram")
+    public PassportResponse updateInstagram(
+            @PathVariable String code,
+            @PathVariable String participantId,
+            @Valid @RequestBody UpdateInstagramRequest request
+    ) {
+        return partyService.updateInstagram(code, participantId, request);
+    }
+
     @PostMapping("/{code}/close")
     public PartyStatus close(
             @PathVariable String code,

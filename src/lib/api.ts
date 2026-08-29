@@ -15,6 +15,7 @@ export interface MetPersonDto {
   interests?: string[]
   myLevel?: number
   theirLevel?: number
+  instagramId?: string
 }
 
 export interface PassportResponse {
@@ -38,6 +39,7 @@ export interface PassportResponse {
   growthStage?: number
   missionTargetCharacter?: string
   missionTargetInterests?: string[]
+  instagramId?: string
 }
 
 export interface PartyStatus {
@@ -157,5 +159,18 @@ export const api = {
   getMatches: (code: string, participantId: string) =>
     request<MatchResponse>(
       `/api/parties/${encodeURIComponent(code)}/matches/${encodeURIComponent(participantId)}`
+    ),
+
+  updateInstagram: (
+    code: string,
+    participantId: string,
+    data: { instagramId: string | null; consent: boolean }
+  ) =>
+    request<PassportResponse>(
+      `/api/parties/${encodeURIComponent(code)}/passport/${encodeURIComponent(participantId)}/instagram`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
     ),
 }
