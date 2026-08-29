@@ -1,6 +1,7 @@
 package kr.suhsaechan.hackthebeat.party.service;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -141,7 +142,7 @@ public class PartyService {
     @Transactional
     public PassportResponse tagPerson(String code, TagRequest request) {
         Party party = findParty(code);
-        Participant me = findParticipant(request.participantId());
+        Participant me = findParticipantInParty(party, request.participantId());
         Participant target = participantRepository.findByPartyAndTagCode(party, request.targetTagCode().trim().toUpperCase())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 코드의 참가자를 찾을 수 없습니다"));
 
@@ -155,7 +156,7 @@ public class PartyService {
 
     public PassportResponse getPassport(String code, String participantId) {
         Party party = findParty(code);
-        Participant me = findParticipant(participantId);
+        Participant me = findParticipantInParty(party, participantId);
         return buildPassport(party, me);
     }
 
@@ -182,7 +183,13 @@ public class PartyService {
     @Transactional
     public MatchResponse submitPicks(String code, SubmitPicksRequest request) {
         Party party = findParty(code);
-        Participant me = findParticipant(request.participantId());
+        Participant me = findParticipantInParty(party, request.participantId());
+        // 마감이 지나면 더 받지 않는다 — 화면에 안내한 24시간이 표시용에 그치지 않게 한다
+        if (party.getPicksDeadline() != null
+                && LocalDateTime.now().isAfter(party.getPicksDeadline())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "상호 선택 마감이 지났습니다");
+        }
 
         if (request.picks() != null && !request.picks().isEmpty()) {
             for (PickItem item : request.picks()) {
@@ -208,7 +215,7 @@ public class PartyService {
         } else if (request.targetParticipantIds() != null) {
             for (String targetIdStr : request.targetParticipantIds()) {
                 try {
-                    Participant target = findParticipant(targetIdStr);
+                    Participant target = findParticipantInParty(party, targetIdStr);
                     if (!me.getParticipantId().equals(target.getParticipantId())) {
                         if (!pickRepository.existsByPartyAndFromParticipantAndToParticipant(party, me, target)) {
                             pickRepository.save(Pick.builder()
@@ -229,7 +236,7 @@ public class PartyService {
 
     public MatchResponse getMatches(String code, String participantId) {
         Party party = findParty(code);
-        Participant me = findParticipant(participantId);
+        Participant me = findParticipantInParty(party, participantId);
 
         List<Participant> mutualMatches = pickRepository.findMutualMatches(party, me);
         List<Pick> partyPicks = pickRepository.findByParty(party);
@@ -427,6 +434,16 @@ public class PartyService {
     private Party findParty(String code) {
         return partyRepository.findByCode(code == null ? "" : code.trim().toUpperCase())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "파티를 찾을 수 없습니다"));
+    }
+
+    /** 참가자가 그 파티 소속인지까지 확인한다 — 다른 파티의 식별자로 넘어오는 요청을 막는다 */
+    private Participant findParticipantInParty(Party party, String idStr) {
+        Participant participant = findParticipant(idStr);
+        if (participant.getParty() == null
+                || !participant.getParty().getPartyId().equals(party.getPartyId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "이 파티의 참가자가 아닙니다");
+        }
+        return participant;
     }
 
     private Participant findParticipant(String idStr) {
