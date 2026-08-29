@@ -10,7 +10,7 @@ import { queryClient } from './lib/queryClient'
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
         <App />
       </BrowserRouter>
       {/* 개발 빌드에서만 포함됨 — 프로덕션 번들에서는 자동 제거 */}
