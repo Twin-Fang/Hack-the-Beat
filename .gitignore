@@ -26,3 +26,7 @@ dist-ssr
 # Dependencies
 package-lock.json
 .gstack/
+
+# 심사 제출 페이지 저장본 — 팀 코드가 들어 있어 추적하지 않는다 (마스킹본은 submission/_template/)
+파티 해커톤 심사 제출 페이지.html
+파티 해커톤 심사 제출 페이지_files/
