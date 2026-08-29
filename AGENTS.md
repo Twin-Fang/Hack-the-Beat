@@ -57,3 +57,4 @@ src/
 - `README.md` 하단 `AUTO-VERSION-SECTION` 블록 — 워크플로우가 갱신
 - `.agents/`, `.gstack/` — 로컬 도구 산출물. 커밋 금지 (`.git/info/exclude`로 제외됨)
 - 파일 삭제는 확인 후에만
+- `package-lock.json`은 **추적하지 않는다** (.gitignore 등록, 팀 결정). 다시 커밋하지 말 것 — 배포 워크플로우는 `npm install` 기준

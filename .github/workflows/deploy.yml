@@ -23,8 +23,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
+      # package-lock.json을 추적하지 않으므로 캐시·npm ci 대신 npm install 사용
+      - run: npm install
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
