@@ -2,28 +2,17 @@ package kr.suhsaechan.hackthebeat.party.service;
 
 import java.security.SecureRandom;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
-import kr.suhsaechan.hackthebeat.party.domain.Mood;
-import kr.suhsaechan.hackthebeat.party.domain.MoodVote;
+import java.util.*;
+import kr.suhsaechan.hackthebeat.party.domain.Badge;
+import kr.suhsaechan.hackthebeat.party.domain.Meet;
 import kr.suhsaechan.hackthebeat.party.domain.Participant;
 import kr.suhsaechan.hackthebeat.party.domain.Party;
-import kr.suhsaechan.hackthebeat.party.dto.PartyDto.Alert;
-import kr.suhsaechan.hackthebeat.party.dto.PartyDto.CreatePartyRequest;
-import kr.suhsaechan.hackthebeat.party.dto.PartyDto.JoinRequest;
-import kr.suhsaechan.hackthebeat.party.dto.PartyDto.MoodCount;
-import kr.suhsaechan.hackthebeat.party.dto.PartyDto.MoodRequest;
-import kr.suhsaechan.hackthebeat.party.dto.PartyDto.ParticipantResponse;
-import kr.suhsaechan.hackthebeat.party.dto.PartyDto.PartyReport;
-import kr.suhsaechan.hackthebeat.party.dto.PartyDto.PartyStatus;
-import kr.suhsaechan.hackthebeat.party.dto.PartyDto.TimelinePoint;
-import kr.suhsaechan.hackthebeat.party.repository.MoodVoteRepository;
+import kr.suhsaechan.hackthebeat.party.domain.Pick;
+import kr.suhsaechan.hackthebeat.party.dto.PartyDto.*;
+import kr.suhsaechan.hackthebeat.party.repository.MeetRepository;
 import kr.suhsaechan.hackthebeat.party.repository.ParticipantRepository;
 import kr.suhsaechan.hackthebeat.party.repository.PartyRepository;
+import kr.suhsaechan.hackthebeat.party.repository.PickRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -35,93 +24,263 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class PartyService {
 
-    /** 헷갈리는 문자(0/O, 1/I)를 뺀 코드 문자셋 — 초대 코드를 눈으로 옮겨 적을 수 있게 한다. */
     private static final String CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-    private static final int CODE_LENGTH = 6;
+    private static final int PARTY_CODE_LENGTH = 6;
+    private static final int TAG_CODE_LENGTH = 4;
     private static final SecureRandom RANDOM = new SecureRandom();
 
-    /** 개입 알림 임계치: 참가자 2명 이상이면서 '어색하다' 비율이 이 값을 넘으면 알린다. */
-    private static final double AWKWARD_ALERT_RATIO = 0.5;
-    private static final int MIN_PARTICIPANTS_FOR_ALERT = 2;
-
-    /** 무료 인원. 초과분은 유료 안내 문구로만 노출한다(결제 없음). */
-    private static final int FREE_CAPACITY = 30;
+    private static final int FREE_CAPACITY = 20;
     private static final int PAID_PRICE = 9900;
-
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
 
     private final PartyRepository partyRepository;
     private final ParticipantRepository participantRepository;
-    private final MoodVoteRepository moodVoteRepository;
+    private final MeetRepository meetRepository;
+    private final PickRepository pickRepository;
 
     @Transactional
-    public PartyStatus createParty(CreatePartyRequest request) {
+    public PassportResponse createParty(CreatePartyRequest request) {
         int capacity = request.capacity() == null ? FREE_CAPACITY : request.capacity();
         Party party = partyRepository.save(Party.builder()
-                .code(generateUniqueCode())
+                .code(generateUniquePartyCode())
                 .name(request.name().trim())
                 .capacity(capacity)
                 .build());
-        return toStatus(party);
+
+        String hostName = (request.hostName() == null || request.hostName().isBlank())
+                ? "호스트" : request.hostName().trim();
+
+        Participant host = participantRepository.save(Participant.builder()
+                .party(party)
+                .name(hostName)
+                .tagCode(generateUniqueTagCode(party))
+                .isHost(true)
+                .build());
+
+        return buildPassport(party, host);
     }
 
     public PartyStatus getStatus(String code) {
-        return toStatus(findParty(code));
+        Party party = findParty(code);
+        long participantCount = participantRepository.countByParty(party);
+        long meetCount = meetRepository.findByParty(party).size();
+
+        return new PartyStatus(
+                party.getCode(),
+                party.getName(),
+                party.getCapacity(),
+                participantCount,
+                meetCount,
+                party.isClosed(),
+                buildPriceNotice(party.getCapacity())
+        );
     }
 
     @Transactional
-    public ParticipantResponse join(String code, JoinRequest request) {
+    public PassportResponse join(String code, JoinRequest request) {
         Party party = findParty(code);
+        if (party.isClosed()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 종료된 파티입니다");
+        }
+
+        // 직전 참여자를 미션 상대로 지정
+        Optional<Participant> lastParticipantOpt = participantRepository.findTopByPartyOrderByJoinedAtDesc(party);
+
         Participant participant = participantRepository.save(Participant.builder()
                 .party(party)
                 .name(request.name().trim())
+                .tagCode(generateUniqueTagCode(party))
+                .missionTargetParticipantId(lastParticipantOpt.map(Participant::getParticipantId).orElse(null))
+                .isHost(false)
                 .build());
-        return new ParticipantResponse(participant.getParticipantId().toString(), participant.getName());
+
+        // 첫 번째 호스트에게 두 번째 참여자를 미션 상대로 연결
+        if (lastParticipantOpt.isPresent()) {
+            Participant lastParticipant = lastParticipantOpt.get();
+            if (lastParticipant.getMissionTargetParticipantId() == null) {
+                lastParticipant.updateMissionTarget(participant.getParticipantId());
+            }
+        }
+
+        // 초대 링크의 fromTagCode가 있으면 즉시 상호 태그(Meet) 생성
+        if (request.fromTagCode() != null && !request.fromTagCode().isBlank()) {
+            participantRepository.findByPartyAndTagCode(party, request.fromTagCode().trim().toUpperCase())
+                    .ifPresent(inviter -> {
+                        if (!inviter.getParticipantId().equals(participant.getParticipantId())) {
+                            createMeetIfNotExists(party, inviter, participant);
+                        }
+                    });
+        }
+
+        return buildPassport(party, participant);
     }
 
     @Transactional
-    public PartyStatus vote(String code, MoodRequest request) {
+    public PassportResponse tagPerson(String code, TagRequest request) {
         Party party = findParty(code);
-        Participant participant = participantRepository.findById(parseId(request.participantId()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "참여 정보를 찾을 수 없습니다"));
+        Participant me = findParticipant(request.participantId());
+        Participant target = participantRepository.findByPartyAndTagCode(party, request.targetTagCode().trim().toUpperCase())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "해당 코드의 참가자를 찾을 수 없습니다"));
 
-        moodVoteRepository.save(MoodVote.builder()
-                .party(party)
-                .participant(participant)
-                .mood(request.mood())
-                .build());
-        return toStatus(party);
+        if (me.getParticipantId().equals(target.getParticipantId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "자신을 태그할 수 없습니다");
+        }
+
+        createMeetIfNotExists(party, me, target);
+        return buildPassport(party, me);
+    }
+
+    public PassportResponse getPassport(String code, String participantId) {
+        Party party = findParty(code);
+        Participant me = findParticipant(participantId);
+        return buildPassport(party, me);
     }
 
     @Transactional
     public PartyStatus close(String code) {
         Party party = findParty(code);
         party.close();
-        return toStatus(party);
+        return getStatus(code);
     }
 
-    public PartyReport getReport(String code) {
+    @Transactional
+    public MatchResponse submitPicks(String code, SubmitPicksRequest request) {
         Party party = findParty(code);
-        List<MoodVote> votes = moodVoteRepository.findByPartyOrderByCreatedAtAsc(party);
-        long participantCount = participantRepository.countByParty(party);
+        Participant me = findParticipant(request.participantId());
 
-        // 5분 단위로 묶어 시간대별 감정 추이를 만든다 (리포트 그래프용)
-        Map<String, Map<String, Long>> buckets = new LinkedHashMap<>();
-        for (MoodVote vote : votes) {
-            String bucket = vote.getCreatedAt()
-                    .withMinute(vote.getCreatedAt().getMinute() / 5 * 5)
-                    .withSecond(0)
-                    .withNano(0)
-                    .format(TIME_FORMAT);
-            buckets.computeIfAbsent(bucket, key -> new LinkedHashMap<>())
-                    .merge(vote.getMood().name(), 1L, Long::sum);
+        if (request.targetParticipantIds() != null) {
+            for (String targetIdStr : request.targetParticipantIds()) {
+                Participant target = findParticipant(targetIdStr);
+                if (!me.getParticipantId().equals(target.getParticipantId())) {
+                    if (!pickRepository.existsByPartyAndFromParticipantAndToParticipant(party, me, target)) {
+                        pickRepository.save(Pick.builder()
+                                .party(party)
+                                .fromParticipant(me)
+                                .toParticipant(target)
+                                .build());
+                    }
+                }
+            }
         }
-        List<TimelinePoint> timeline = buckets.entrySet().stream()
-                .map(entry -> new TimelinePoint(entry.getKey(), entry.getValue()))
+
+        return getMatches(code, request.participantId());
+    }
+
+    public MatchResponse getMatches(String code, String participantId) {
+        Party party = findParty(code);
+        Participant me = findParticipant(participantId);
+
+        List<Participant> mutualMatches = pickRepository.findMutualMatches(party, me);
+        List<MetPersonDto> matchDtos = mutualMatches.stream()
+                .map(p -> new MetPersonDto(p.getParticipantId().toString(), p.getName(), p.getTagCode(), null))
                 .toList();
 
-        return new PartyReport(party.getCode(), party.getName(), participantCount,
-                votes.size(), countMoods(votes), timeline);
+        List<MetPersonDto> allMet = getMyMetPersons(party, me);
+
+        return new MatchResponse(
+                me.getParticipantId().toString(),
+                me.getName(),
+                matchDtos.size(),
+                matchDtos,
+                allMet,
+                !matchDtos.isEmpty()
+        );
+    }
+
+    private void createMeetIfNotExists(Party party, Participant a, Participant b) {
+        if (!meetRepository.existsMeet(party, a, b)) {
+            meetRepository.save(Meet.builder()
+                    .party(party)
+                    .participantA(a)
+                    .participantB(b)
+                    .build());
+        }
+    }
+
+    private PassportResponse buildPassport(Party party, Participant me) {
+        List<Meet> myMeets = meetRepository.findMyMeets(party, me);
+        long totalParticipants = participantRepository.countByParty(party);
+        List<MetPersonDto> metPersons = new ArrayList<>();
+
+        boolean missionCleared = false;
+        String missionTargetName = null;
+
+        if (me.getMissionTargetParticipantId() != null) {
+            Optional<Participant> targetOpt = participantRepository.findById(me.getMissionTargetParticipantId());
+            if (targetOpt.isPresent()) {
+                missionTargetName = targetOpt.get().getName();
+            }
+        }
+
+        for (Meet m : myMeets) {
+            Participant other = m.getParticipantA().getParticipantId().equals(me.getParticipantId())
+                    ? m.getParticipantB() : m.getParticipantA();
+            metPersons.add(new MetPersonDto(
+                    other.getParticipantId().toString(),
+                    other.getName(),
+                    other.getTagCode(),
+                    m.getCreatedAt().format(TIME_FORMAT)
+            ));
+            if (me.getMissionTargetParticipantId() != null &&
+                other.getParticipantId().equals(me.getMissionTargetParticipantId())) {
+                missionCleared = true;
+            }
+        }
+
+        int metCount = metPersons.size();
+        int progressGoal = (int) Math.max(1, totalParticipants - 1);
+        int progressPercent = Math.min(100, (int) Math.round((double) metCount / progressGoal * 100));
+
+        // 증표 계산
+        boolean hasFirstMeet = metCount >= 1;
+        boolean hasIceBreaker = metCount >= 3;
+        boolean hasPartyPeople = totalParticipants >= 2 && metCount >= (totalParticipants + 1) / 2;
+        boolean hasPartyMaster = totalParticipants >= 2 && metCount >= (totalParticipants - 1);
+        boolean hasMissionClear = missionCleared;
+        boolean hasReunion = party.isClosed() && !pickRepository.findMutualMatches(party, me).isEmpty();
+
+        List<BadgeDto> badges = List.of(
+                new BadgeDto(Badge.FIRST_MEET.name(), Badge.FIRST_MEET.getTitle(), Badge.FIRST_MEET.getDescription(), hasFirstMeet),
+                new BadgeDto(Badge.ICE_BREAKER.name(), Badge.ICE_BREAKER.getTitle(), Badge.ICE_BREAKER.getDescription(), hasIceBreaker),
+                new BadgeDto(Badge.PARTY_PEOPLE.name(), Badge.PARTY_PEOPLE.getTitle(), Badge.PARTY_PEOPLE.getDescription(), hasPartyPeople),
+                new BadgeDto(Badge.PARTY_MASTER.name(), Badge.PARTY_MASTER.getTitle(), Badge.PARTY_MASTER.getDescription(), hasPartyMaster),
+                new BadgeDto(Badge.MISSION_CLEAR.name(), Badge.MISSION_CLEAR.getTitle(), Badge.MISSION_CLEAR.getDescription(), hasMissionClear),
+                new BadgeDto(Badge.REUNION.name(), Badge.REUNION.getTitle(), Badge.REUNION.getDescription(), hasReunion)
+        );
+
+        return new PassportResponse(
+                party.getCode(),
+                party.getName(),
+                me.getParticipantId().toString(),
+                me.getName(),
+                me.getTagCode(),
+                me.isHost(),
+                party.isClosed(),
+                metCount,
+                totalParticipants,
+                progressPercent,
+                badges,
+                metPersons,
+                missionTargetName,
+                missionCleared,
+                buildPriceNotice(party.getCapacity())
+        );
+    }
+
+    private List<MetPersonDto> getMyMetPersons(Party party, Participant me) {
+        List<Meet> myMeets = meetRepository.findMyMeets(party, me);
+        List<MetPersonDto> metPersons = new ArrayList<>();
+        for (Meet m : myMeets) {
+            Participant other = m.getParticipantA().getParticipantId().equals(me.getParticipantId())
+                    ? m.getParticipantB() : m.getParticipantA();
+            metPersons.add(new MetPersonDto(
+                    other.getParticipantId().toString(),
+                    other.getName(),
+                    other.getTagCode(),
+                    m.getCreatedAt().format(TIME_FORMAT)
+            ));
+        }
+        return metPersons;
     }
 
     private Party findParty(String code) {
@@ -129,60 +288,14 @@ public class PartyService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "파티를 찾을 수 없습니다"));
     }
 
-    private UUID parseId(String raw) {
+    private Participant findParticipant(String idStr) {
         try {
-            return UUID.fromString(raw);
+            UUID id = UUID.fromString(idStr);
+            return participantRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "참가자 정보를 찾을 수 없습니다"));
         } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "참여 정보가 올바르지 않습니다");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "올바르지 않은 참가자 식별자입니다");
         }
-    }
-
-    private PartyStatus toStatus(Party party) {
-        List<MoodVote> votes = moodVoteRepository.findByPartyOrderByCreatedAtAsc(party);
-        long participantCount = participantRepository.countByParty(party);
-
-        return new PartyStatus(
-                party.getCode(),
-                party.getName(),
-                party.getCapacity(),
-                participantCount,
-                votes.size(),
-                countMoods(votes),
-                buildAlert(votes, participantCount),
-                party.isClosed(),
-                buildPriceNotice(party.getCapacity())
-        );
-    }
-
-    /** 감정별 집계. 화면 막대가 비어 보이지 않도록 0건인 감정도 항상 포함한다. */
-    private List<MoodCount> countMoods(List<MoodVote> votes) {
-        Map<Mood, Long> counted = votes.stream()
-                .collect(Collectors.groupingBy(MoodVote::getMood, Collectors.counting()));
-        long total = votes.size();
-
-        List<MoodCount> result = new ArrayList<>();
-        for (Mood mood : Mood.values()) {
-            long count = counted.getOrDefault(mood, 0L);
-            int percent = total == 0 ? 0 : (int) Math.round(count * 100.0 / total);
-            result.add(new MoodCount(mood.name(), mood.getLabel(), count, percent));
-        }
-        return result;
-    }
-
-    /**
-     * '어색하다'가 절반을 넘으면 호스트에게 개입 시점을 알린다.
-     * 표본이 1명뿐일 때 울리면 오탐이라 최소 인원 조건을 둔다.
-     */
-    private Alert buildAlert(List<MoodVote> votes, long participantCount) {
-        if (votes.isEmpty() || participantCount < MIN_PARTICIPANTS_FOR_ALERT) {
-            return new Alert(false, null);
-        }
-        long awkward = votes.stream().filter(vote -> vote.getMood() == Mood.AWKWARD).count();
-        if ((double) awkward / votes.size() < AWKWARD_ALERT_RATIO) {
-            return new Alert(false, null);
-        }
-        return new Alert(true, String.format(
-                "\"어색하다\"가 %d개 중 %d개입니다 — 게임 하나 돌릴 시점입니다", votes.size(), awkward));
     }
 
     private String buildPriceNotice(int capacity) {
@@ -192,10 +305,10 @@ public class PartyService {
         return String.format("%d명까지 무료 / 초과 시 %,d원", FREE_CAPACITY, PAID_PRICE);
     }
 
-    private String generateUniqueCode() {
+    private String generateUniquePartyCode() {
         for (int attempt = 0; attempt < 10; attempt++) {
-            StringBuilder builder = new StringBuilder(CODE_LENGTH);
-            for (int i = 0; i < CODE_LENGTH; i++) {
+            StringBuilder builder = new StringBuilder(PARTY_CODE_LENGTH);
+            for (int i = 0; i < PARTY_CODE_LENGTH; i++) {
                 builder.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
             }
             String code = builder.toString();
@@ -203,6 +316,20 @@ public class PartyService {
                 return code;
             }
         }
-        throw new IllegalStateException("초대 코드 생성에 실패했습니다");
+        throw new IllegalStateException("파티 코드 생성에 실패했습니다");
+    }
+
+    private String generateUniqueTagCode(Party party) {
+        for (int attempt = 0; attempt < 20; attempt++) {
+            StringBuilder builder = new StringBuilder(TAG_CODE_LENGTH);
+            for (int i = 0; i < TAG_CODE_LENGTH; i++) {
+                builder.append(CODE_CHARS.charAt(RANDOM.nextInt(CODE_CHARS.length())));
+            }
+            String tagCode = builder.toString();
+            if (!participantRepository.existsByPartyAndTagCode(party, tagCode)) {
+                return tagCode;
+            }
+        }
+        throw new IllegalStateException("태그 코드 생성에 실패했습니다");
     }
 }
