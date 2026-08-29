@@ -78,10 +78,34 @@ export default function PartyResultPage() {
 
   if (matchQuery.isError) {
     return (
-      <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center p-4 gap-4">
         <div className="alert alert-error max-w-sm">
           <span>{matchQuery.error.message}</span>
         </div>
+        <div className="flex flex-col gap-2 w-full max-w-sm">
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={() => matchQuery.refetch()}
+          >
+            다시 시도
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setIsVaultOpen(true)}
+          >
+            🏆 내 증표함
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary font-bold"
+            onClick={() => navigate('/')}
+          >
+            다음 파티 만들기
+          </button>
+        </div>
+        <MyVaultModal isOpen={isVaultOpen} onClose={() => setIsVaultOpen(false)} />
       </div>
     )
   }
@@ -176,12 +200,13 @@ export default function PartyResultPage() {
                             : 'bg-base-200/60 border-base-300 hover:bg-base-200'
                         }`}
                       >
-                        <div
+                        <label
+                          htmlFor={`pick-${person.tagCode}`}
                           className="flex items-center justify-between cursor-pointer select-none"
-                          onClick={() => toggleSelect(person.tagCode)}
                         >
                           <div className="flex items-center gap-3">
                             <input
+                              id={`pick-${person.tagCode}`}
                               type="checkbox"
                               className="checkbox checkbox-primary"
                               checked={isChecked}
@@ -206,7 +231,7 @@ export default function PartyResultPage() {
                               </div>
                             </div>
                           </div>
-                        </div>
+                        </label>
 
                         {/* 선택 시 다시 만나고 싶은 정도 선택기 노출 */}
                         {isChecked ? (
@@ -225,8 +250,17 @@ export default function PartyResultPage() {
                   })}
                 </div>
 
+                {submitMutation.isError ? (
+                  <p className="text-error text-xs mt-3">
+                    {submitMutation.error instanceof Error
+                      ? submitMutation.error.message
+                      : '선택 제출에 실패했습니다. 잠시 후 다시 시도해주세요.'}
+                  </p>
+                ) : null}
+
                 <button
                   type="submit"
+                  data-testid="submit-picks-btn"
                   className="btn btn-primary btn-block mt-4 font-bold shadow"
                   disabled={submitMutation.isPending}
                 >

@@ -67,7 +67,9 @@ export default function PartyPassportPage() {
     queryKey: ['passport', partyCode, session?.participantId],
     queryFn: () => api.getPassport(partyCode, session!.participantId),
     enabled: Boolean(partyCode && session?.participantId),
-    refetchInterval: 4000,
+    // 종료된 파티는 더 조회하지 않는다 — 폴링이 파티당 요청 수를 좌우한다
+    refetchInterval: (query) => (query.state.data?.isClosed ? false : 15000),
+    refetchIntervalInBackground: false,
   })
 
   // 뱃지 획득 시 로컬스토리지 누적
@@ -463,7 +465,19 @@ export default function PartyPassportPage() {
           </div>
         </div>
 
-        {/* 1:1 미션 카드 */}
+        {/* 1:1 미션 카드 — 상대가 아직 없으면 안내를 대신 띄운다 */}
+        {!passport.missionTargetName ? (
+          <div className="card bg-base-100 border border-base-300 shadow-sm">
+            <div className="card-body p-4">
+              <span className="badge badge-xs badge-secondary mb-1">
+                오늘의 1:1 미션
+              </span>
+              <p className="text-xs text-base-content/70">
+                참가자가 한 명 더 들어오면 아직 만나지 않은 사람 중에서 1:1 미션 상대가 배정됩니다.
+              </p>
+            </div>
+          </div>
+        ) : null}
         {passport.missionTargetName ? (
           <div className="card bg-gradient-to-r from-primary/15 to-secondary/15 border border-primary/20 shadow-sm">
             <div className="card-body p-4 flex flex-row items-center justify-between">

@@ -3,6 +3,7 @@ package kr.suhsaechan.hackthebeat.party.service;
 import java.security.SecureRandom;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import kr.suhsaechan.hackthebeat.party.domain.Badge;
 import kr.suhsaechan.hackthebeat.party.domain.Meet;
 import kr.suhsaechan.hackthebeat.party.domain.Participant;
@@ -98,7 +99,6 @@ public class PartyService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 종료된 파티입니다");
         }
 
-        // 직전 참여자를 미션 상대로 지정
         Optional<Participant> lastParticipantOpt = participantRepository.findTopByPartyOrderByJoinedAtDesc(party);
 
         String character = normalizeCharacter(request.character());
@@ -108,16 +108,19 @@ public class PartyService {
                 .party(party)
                 .name(request.name().trim())
                 .tagCode(generateUniqueTagCode(party))
-                .missionTargetParticipantId(lastParticipantOpt.map(Participant::getParticipantId).orElse(null))
+                .missionTargetParticipantId(pickMissionTarget(party, request.fromTagCode()))
                 .isHost(false)
                 .characterKey(character)
                 .interests(interests)
                 .build());
 
-        // 첫 번째 호스트에게 두 번째 참여자를 미션 상대로 연결
+        // 미션 상대가 아직 없는 기존 참가자에게도 상대를 채워준다.
+        // 단 방금 들어온 사람과 초대 관계로 묶인 참가자는 제외한다 — 이미 만난 사이라 미션이 곧바로 완료된다
         if (lastParticipantOpt.isPresent()) {
             Participant lastParticipant = lastParticipantOpt.get();
-            if (lastParticipant.getMissionTargetParticipantId() == null) {
+            boolean invitedByLast = request.fromTagCode() != null
+                    && lastParticipant.getTagCode().equalsIgnoreCase(request.fromTagCode().trim());
+            if (lastParticipant.getMissionTargetParticipantId() == null && !invitedByLast) {
                 lastParticipant.updateMissionTarget(participant.getParticipantId());
             }
         }
@@ -455,6 +458,21 @@ public class PartyService {
             }
         }
         throw new IllegalStateException("파티 코드 생성에 실패했습니다");
+    }
+
+    /**
+     * 미션 상대를 고른다. 초대자는 참여 즉시 상호 태그되어 미션이 곧바로 완료되므로 후보에서 뺀다.
+     * 후보가 없으면 null을 돌려주고, 화면에서는 미션 카드 대신 안내가 나간다.
+     */
+    private UUID pickMissionTarget(Party party, String fromTagCode) {
+        String inviterCode = fromTagCode == null ? null : fromTagCode.trim().toUpperCase();
+        List<Participant> candidates = participantRepository.findByPartyOrderByJoinedAtAsc(party).stream()
+                .filter(p -> inviterCode == null || !p.getTagCode().equalsIgnoreCase(inviterCode))
+                .toList();
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        return candidates.get(ThreadLocalRandom.current().nextInt(candidates.size())).getParticipantId();
     }
 
     private String generateUniqueTagCode(Party party) {

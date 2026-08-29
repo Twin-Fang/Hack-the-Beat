@@ -19,6 +19,10 @@ export default function HomePage() {
   const [joinCode, setJoinCode] = useState('')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
+  // 정원이 20명을 넘으면 결제 확인 단계를 한 번 거친다 — 요금제가 화면에서 실제로 동작해야 한다
+  const [capacity, setCapacity] = useState(20)
+  const [isPaymentStep, setIsPaymentStep] = useState(false)
+  const [isPaid, setIsPaid] = useState(false)
 
   const handleToggleInterest = (interest: string) => {
     setInterests((prev) =>
@@ -35,7 +39,7 @@ export default function HomePage() {
       api.createParty({
         name,
         hostName: '호스트',
-        capacity: 30,
+        capacity,
         hostCharacter: character,
         hostInterests: interests,
       }),
@@ -63,6 +67,17 @@ export default function HomePage() {
       return
     }
     setFormError(null)
+    if (capacity > 20 && !isPaid) {
+      setIsPaymentStep(true)
+      return
+    }
+    createMutation.mutate(partyName.trim())
+  }
+
+  // 20명 초과 파티는 결제를 마쳐야 생성된다
+  const handlePay = () => {
+    setIsPaid(true)
+    setIsPaymentStep(false)
     createMutation.mutate(partyName.trim())
   }
 
@@ -129,6 +144,53 @@ export default function HomePage() {
               onToggle={handleToggleInterest}
               max={3}
             />
+
+            <div>
+              <label className="label" htmlFor="partyCapacity">
+                <span className="label-text font-medium">예상 인원</span>
+                <span className="label-text-alt text-xs text-base-content/60">
+                  20명까지 무료
+                </span>
+              </label>
+              <input
+                id="partyCapacity"
+                name="partyCapacity"
+                type="number"
+                min={1}
+                max={200}
+                aria-label="예상 인원"
+                data-testid="party-capacity-input"
+                className="input input-bordered w-full"
+                value={capacity}
+                onChange={(e) => {
+                  setCapacity(Number(e.target.value) || 0)
+                  setIsPaid(false)
+                  setIsPaymentStep(false)
+                }}
+              />
+              {capacity > 20 ? (
+                <p className="text-xs text-warning mt-1.5" data-testid="paid-notice">
+                  20명을 넘는 파티입니다. 파티당 9,900원이 부과됩니다.
+                </p>
+              ) : null}
+            </div>
+
+            {isPaymentStep ? (
+              <div className="rounded-box border border-warning/40 bg-warning/10 p-4 space-y-2">
+                <p className="text-sm font-bold">결제 확인</p>
+                <p className="text-xs text-base-content/70">
+                  예상 인원 {capacity}명 · 20명 초과 파티 이용료 9,900원
+                </p>
+                <button
+                  type="button"
+                  data-testid="pay-btn"
+                  className="btn btn-warning btn-sm w-full font-bold"
+                  onClick={handlePay}
+                >
+                  9,900원 결제하기
+                </button>
+              </div>
+            ) : null}
 
             {formError ? <p className="text-error text-xs">{formError}</p> : null}
 

@@ -75,8 +75,19 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   })
 
   if (!res.ok) {
-    const errorText = await res.text().catch(() => '')
-    throw new Error(errorText || `요청 실패 (${res.status})`)
+    // 서버 원문(JSON·프록시 HTML)을 그대로 띄우지 않는다
+    const raw = await res.text().catch(() => '')
+    let message = ''
+    try {
+      const parsed = JSON.parse(raw)
+      message = typeof parsed?.message === 'string' ? parsed.message : ''
+    } catch {
+      message = raw.startsWith('<') ? '' : raw
+    }
+    throw new Error(
+      message.trim() ||
+        `요청을 처리하지 못했습니다 (${res.status}). 잠시 후 다시 시도해주세요.`
+    )
   }
 
   return res.json()

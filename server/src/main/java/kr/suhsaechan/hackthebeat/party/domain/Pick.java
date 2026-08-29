@@ -32,7 +32,7 @@ public class Pick {
     @JoinColumn(name = "to_participant_id")
     private Participant toParticipant;
 
-    @Column(name = "pick_level", nullable = false)
+    @Column(name = "pick_level")
     private Integer pickLevel;
 
     @Column(nullable = false)
