@@ -35,6 +35,11 @@ public final class PartyDto {
         }
     }
 
+    public record CloseRequest(
+            String participantId
+    ) {
+    }
+
     public record TagRequest(
             @NotBlank(message = "내 참여자 정보가 필요합니다") String participantId,
             @NotBlank(message = "태그할 4자리 코드를 입력해주세요") @Size(min = 4, max = 4) String targetTagCode

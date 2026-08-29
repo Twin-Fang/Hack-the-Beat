@@ -34,6 +34,15 @@ public class PartyService {
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter DEADLINE_FORMAT = DateTimeFormatter.ofPattern("MM/dd HH:mm");
 
+    private static final List<String> VALID_CHARACTERS = List.of(
+            "FOX", "FROG", "PANDA", "CHICK", "OCTOPUS", "LION", "RABBIT", "KOALA"
+    );
+    private static final Set<String> VALID_CHARACTER_SET = Set.copyOf(VALID_CHARACTERS);
+
+    private static final Set<String> VALID_INTEREST_SET = Set.of(
+            "게임", "러닝", "영화", "음악", "여행", "요리", "독서", "그림", "축구", "반려동물", "카페", "개발"
+    );
+
     private final PartyRepository partyRepository;
     private final ParticipantRepository participantRepository;
     private final MeetRepository meetRepository;
@@ -51,10 +60,8 @@ public class PartyService {
         String hostName = (request.hostName() == null || request.hostName().isBlank())
                 ? "호스트" : request.hostName().trim();
 
-        String hostCharacter = (request.hostCharacter() == null || request.hostCharacter().isBlank())
-                ? "FOX" : request.hostCharacter().trim();
-        String hostInterests = (request.hostInterests() != null && !request.hostInterests().isEmpty())
-                ? String.join(",", request.hostInterests()) : null;
+        String hostCharacter = normalizeCharacter(request.hostCharacter());
+        String hostInterests = normalizeInterests(request.hostInterests());
 
         Participant host = participantRepository.save(Participant.builder()
                 .party(party)
@@ -94,10 +101,8 @@ public class PartyService {
         // 직전 참여자를 미션 상대로 지정
         Optional<Participant> lastParticipantOpt = participantRepository.findTopByPartyOrderByJoinedAtDesc(party);
 
-        String character = (request.character() == null || request.character().isBlank())
-                ? "FOX" : request.character().trim();
-        String interests = (request.interests() != null && !request.interests().isEmpty())
-                ? String.join(",", request.interests()) : null;
+        String character = normalizeCharacter(request.character());
+        String interests = normalizeInterests(request.interests());
 
         Participant participant = participantRepository.save(Participant.builder()
                 .party(party)
@@ -152,10 +157,21 @@ public class PartyService {
     }
 
     @Transactional
-    public PartyStatus close(String code) {
+    public PartyStatus close(String code, String participantId) {
         Party party = findParty(code);
+        if (participantId != null && !participantId.isBlank()) {
+            Participant participant = findParticipant(participantId);
+            if (!participant.getParty().getPartyId().equals(party.getPartyId()) || !participant.isHost()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "호스트만 파티를 종료할 수 있습니다");
+            }
+        }
         party.close();
         return getStatus(code);
+    }
+
+    @Transactional
+    public PartyStatus close(String code) {
+        return close(code, null);
     }
 
     @Transactional
@@ -163,17 +179,42 @@ public class PartyService {
         Party party = findParty(code);
         Participant me = findParticipant(request.participantId());
 
-        if (request.targetParticipantIds() != null) {
-            for (String targetIdStr : request.targetParticipantIds()) {
-                Participant target = findParticipant(targetIdStr);
-                if (!me.getParticipantId().equals(target.getParticipantId())) {
-                    if (!pickRepository.existsByPartyAndFromParticipantAndToParticipant(party, me, target)) {
-                        pickRepository.save(Pick.builder()
-                                .party(party)
-                                .fromParticipant(me)
-                                .toParticipant(target)
-                                .build());
+        if (request.picks() != null && !request.picks().isEmpty()) {
+            for (PickItem item : request.picks()) {
+                if (item.targetTagCode() == null || item.targetTagCode().isBlank()) {
+                    continue;
+                }
+                Optional<Participant> targetOpt = participantRepository.findByPartyAndTagCode(party, item.targetTagCode().trim().toUpperCase());
+                if (targetOpt.isPresent()) {
+                    Participant target = targetOpt.get();
+                    if (!me.getParticipantId().equals(target.getParticipantId())) {
+                        int level = item.level() == null ? 2 : Math.max(1, Math.min(3, item.level()));
+                        if (!pickRepository.existsByPartyAndFromParticipantAndToParticipant(party, me, target)) {
+                            pickRepository.save(Pick.builder()
+                                    .party(party)
+                                    .fromParticipant(me)
+                                    .toParticipant(target)
+                                    .pickLevel(level)
+                                    .build());
+                        }
                     }
+                }
+            }
+        } else if (request.targetParticipantIds() != null) {
+            for (String targetIdStr : request.targetParticipantIds()) {
+                try {
+                    Participant target = findParticipant(targetIdStr);
+                    if (!me.getParticipantId().equals(target.getParticipantId())) {
+                        if (!pickRepository.existsByPartyAndFromParticipantAndToParticipant(party, me, target)) {
+                            pickRepository.save(Pick.builder()
+                                    .party(party)
+                                    .fromParticipant(me)
+                                    .toParticipant(target)
+                                    .pickLevel(2)
+                                    .build());
+                        }
+                    }
+                } catch (ResponseStatusException ignored) {
                 }
             }
         }
@@ -186,6 +227,13 @@ public class PartyService {
         Participant me = findParticipant(participantId);
 
         List<Participant> mutualMatches = pickRepository.findMutualMatches(party, me);
+        List<Pick> partyPicks = pickRepository.findByParty(party);
+        Map<String, Integer> pickLevelMap = new HashMap<>();
+        for (Pick pick : partyPicks) {
+            String key = pick.getFromParticipant().getParticipantId() + "->" + pick.getToParticipant().getParticipantId();
+            pickLevelMap.put(key, pick.getPickLevel());
+        }
+
         List<MetPersonDto> matchDtos = mutualMatches.stream()
                 .map(p -> new MetPersonDto(
                         p.getName(),
@@ -193,8 +241,8 @@ public class PartyService {
                         null,
                         p.getCharacterKey(),
                         parseInterests(p.getInterests()),
-                        null,
-                        null
+                        pickLevelMap.get(me.getParticipantId() + "->" + p.getParticipantId()),
+                        pickLevelMap.get(p.getParticipantId() + "->" + me.getParticipantId())
                 ))
                 .toList();
 
@@ -211,6 +259,36 @@ public class PartyService {
                 !matchDtos.isEmpty(),
                 picksDeadline
         );
+    }
+
+    private String normalizeCharacter(String character) {
+        if (character == null || character.isBlank()) {
+            return getRandomCharacter();
+        }
+        String upper = character.trim().toUpperCase();
+        if (VALID_CHARACTER_SET.contains(upper)) {
+            return upper;
+        }
+        return getRandomCharacter();
+    }
+
+    private String getRandomCharacter() {
+        return VALID_CHARACTERS.get(RANDOM.nextInt(VALID_CHARACTERS.size()));
+    }
+
+    private String normalizeInterests(List<String> interests) {
+        if (interests == null || interests.isEmpty()) {
+            return null;
+        }
+        List<String> validInterests = interests.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(VALID_INTEREST_SET::contains)
+                .distinct()
+                .limit(3)
+                .toList();
+
+        return validInterests.isEmpty() ? null : String.join(",", validInterests);
     }
 
     private void createMeetIfNotExists(Party party, Participant a, Participant b) {

@@ -42,8 +42,14 @@ public class PartyController {
     }
 
     @PostMapping("/{code}/close")
-    public PartyStatus close(@PathVariable String code) {
-        return partyService.close(code);
+    public PartyStatus close(
+            @PathVariable String code,
+            @RequestBody(required = false) CloseRequest request,
+            @RequestParam(required = false) String participantId
+    ) {
+        String resolvedParticipantId = (request != null && request.participantId() != null)
+                ? request.participantId() : participantId;
+        return partyService.close(code, resolvedParticipantId);
     }
 
     @PostMapping("/{code}/picks")
