@@ -17,10 +17,15 @@ public final class PartyDto {
             String hostName,
             @Min(1) @Max(500) Integer capacity,
             String hostCharacter,
-            List<String> hostInterests
+            List<String> hostInterests,
+            Boolean paid
     ) {
         public CreatePartyRequest(String name, String hostName, Integer capacity) {
-            this(name, hostName, capacity, null, null);
+            this(name, hostName, capacity, null, null, null);
+        }
+
+        public CreatePartyRequest(String name, String hostName, Integer capacity, String hostCharacter, List<String> hostInterests) {
+            this(name, hostName, capacity, hostCharacter, hostInterests, null);
         }
     }
 

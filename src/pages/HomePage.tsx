@@ -48,13 +48,14 @@ export default function HomePage() {
   }
 
   const createMutation = useMutation({
-    mutationFn: (name: string) =>
+    mutationFn: ({ name, paid }: { name: string; paid: boolean }) =>
       api.createParty({
         name,
         hostName: '호스트',
         capacity,
         hostCharacter: character,
         hostInterests: interests,
+        paid,
       }),
     onSuccess: (data) => {
       saveSession({
@@ -84,14 +85,14 @@ export default function HomePage() {
       setIsPaymentStep(true)
       return
     }
-    createMutation.mutate(partyName.trim())
+    createMutation.mutate({ name: partyName.trim(), paid: isPaid })
   }
 
-  // 20명 초과 파티는 결제를 마쳐야 생성된다
+  // 20명 초과 파티는 결제를 마쳐야 생성된다 — 서버도 paid:true 없이는 20명 초과 생성을 거부한다
   const handlePay = () => {
     setIsPaid(true)
     setIsPaymentStep(false)
-    createMutation.mutate(partyName.trim())
+    createMutation.mutate({ name: partyName.trim(), paid: true })
   }
 
   const handleJoinSubmit = (e: React.FormEvent) => {

@@ -100,6 +100,7 @@ export const api = {
     capacity?: number
     hostCharacter?: string
     hostInterests?: string[]
+    paid?: boolean
   }) =>
     request<PassportResponse>('/api/parties', {
       method: 'POST',

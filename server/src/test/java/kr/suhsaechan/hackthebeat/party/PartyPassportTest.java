@@ -28,7 +28,7 @@ class PartyPassportTest {
     @Test
     @DisplayName("파티 생성 -> 호스트 패스포트 및 4자리 태그코드 발급")
     void createPartyTest() {
-        PassportResponse response = partyService.createParty(new CreatePartyRequest("금요일 파티", "호스트", 30));
+        PassportResponse response = partyService.createParty(new CreatePartyRequest("금요일 파티", "호스트", 20));
 
         assertThat(response.partyCode()).hasSize(6);
         assertThat(response.partyName()).isEqualTo("금요일 파티");
@@ -41,7 +41,7 @@ class PartyPassportTest {
     @DisplayName("초대 링크로 참여 시 초대자와 즉시 상호 태그(Meet)되고 '첫 만남' 증표 획득")
     void joinWithFromTagCodeTest() {
         // 1. 호스트 파티 생성
-        PassportResponse host = partyService.createParty(new CreatePartyRequest("금요일 파티", "호스트", 30));
+        PassportResponse host = partyService.createParty(new CreatePartyRequest("금요일 파티", "호스트", 20));
 
         // 2. 김서준이 호스트의 fromTagCode로 참여
         PassportResponse guest = partyService.join(host.partyCode(), new JoinRequest("김서준", host.tagCode()));
@@ -192,6 +192,29 @@ class PartyPassportTest {
         assertThatThrownBy(() -> partyService.close(host.partyCode(), "  "))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    @Test
+    @DisplayName("20명 초과 파티는 paid:true 없이 API를 직접 호출해도 결제 필요(402)로 거부되고, paid:true면 생성된다")
+    void createPartyOver20RequiresPaidTest() {
+        assertThatThrownBy(() -> partyService.createParty(
+                new CreatePartyRequest("결제 우회 시도 파티", "호스트", 30, null, null, null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED));
+
+        assertThatThrownBy(() -> partyService.createParty(
+                new CreatePartyRequest("결제 우회 시도 파티2", "호스트", 30, null, null, false)))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.PAYMENT_REQUIRED));
+
+        PassportResponse paid = partyService.createParty(
+                new CreatePartyRequest("정상 결제 파티", "호스트", 30, null, null, true));
+        assertThat(paid.partyCode()).isNotBlank();
+
+        // 20명 이하는 결제 없이도 그대로 생성된다
+        PassportResponse free = partyService.createParty(
+                new CreatePartyRequest("무료 파티", "호스트", 20));
+        assertThat(free.partyCode()).isNotBlank();
     }
 }
 

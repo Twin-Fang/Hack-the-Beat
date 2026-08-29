@@ -53,6 +53,12 @@ public class PartyService {
     @Transactional
     public PassportResponse createParty(CreatePartyRequest request) {
         int capacity = request.capacity() == null ? FREE_CAPACITY : request.capacity();
+        // 화면의 결제 확인 단계는 UI 게이트일 뿐이라, API를 직접 호출하면 우회될 수 있다 —
+        // 서버에서도 동일한 조건을 강제해 요금제가 실제로 걸리게 한다
+        if (capacity > FREE_CAPACITY && !Boolean.TRUE.equals(request.paid())) {
+            throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
+                    "20명 초과 파티는 결제 확인이 필요합니다");
+        }
         Party party = partyRepository.save(Party.builder()
                 .code(generateUniquePartyCode())
                 .name(request.name().trim())
