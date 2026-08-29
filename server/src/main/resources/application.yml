@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: hack-the-beat
+  datasource:
+    # 운영값은 컨테이너 환경변수로 주입한다 (공개 저장소라 비밀번호를 넣지 않는다)
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/hackthebeat}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080

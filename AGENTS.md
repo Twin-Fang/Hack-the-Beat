@@ -51,6 +51,14 @@ src/
 - 기획안·스크립트에는 **실제 동작하는 기능만** 쓴다 (미구현 기능 근거는 6점 상한)
 - 제출 폼 필드·글자 제한·템플릿은 docs/submission-guide.md. 테스트 계정은 비우는 게 원칙이라 **스캐폴드의 `RequireAuth` 로그인 가드는 실제 제품에서 제거**한다
 
+## 서버 (server/)
+
+- Spring Boot 3.4.1 + Java 17 + JPA + PostgreSQL. 인증 없음, 파티 6자리 코드로 접근
+- API: `http://suh-project.synology.me:8096` (HTTPS는 `https://hack-the-beat.suhsaechan.kr` — DSM 역방향 프록시)
+- **프론트가 HTTPS라 HTTP API를 직접 부르면 혼합 콘텐츠로 차단된다.** 브라우저에서 호출할 땐 반드시 HTTPS 주소를 쓴다
+- 엔드포인트·응답 형태는 [server/README.md](server/README.md)
+- `main`에 `server/**` push → Actions가 빌드·Docker Hub 푸시·NAS 배포·헬스체크까지 자동
+
 ## 건드리지 말 것
 
 - `.github/workflows/PROJECT-COMMON-*.yaml`, `.github/scripts/`, `version.yml`, `.github/.wizard/` — 자동화 마법사 관리 영역. 버전은 워크플로우가 올림
