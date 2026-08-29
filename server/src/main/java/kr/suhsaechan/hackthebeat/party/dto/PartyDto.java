@@ -6,12 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;
-import java.util.Map;
-import kr.suhsaechan.hackthebeat.party.domain.Mood;
 
-/**
- * 요청·응답 DTO 모음. 파일이 흩어지면 훑기 어려워 한 곳에 중첩 레코드로 둔다.
- */
 public final class PartyDto {
 
     private PartyDto() {
@@ -19,71 +14,82 @@ public final class PartyDto {
 
     public record CreatePartyRequest(
             @NotBlank(message = "파티 이름을 입력해주세요") @Size(max = 60) String name,
+            String hostName,
             @Min(1) @Max(500) Integer capacity
     ) {
     }
 
     public record JoinRequest(
-            @NotBlank(message = "이름을 입력해주세요") @Size(max = 20) String name
+            @NotBlank(message = "이름을 입력해주세요") @Size(max = 20) String name,
+            String fromTagCode
     ) {
     }
 
-    public record MoodRequest(
-            @NotNull(message = "참여 정보가 없습니다") String participantId,
-            @NotNull(message = "기분을 선택해주세요") Mood mood
+    public record TagRequest(
+            @NotBlank(message = "내 참여자 정보가 필요합니다") String participantId,
+            @NotBlank(message = "태그할 4자리 코드를 입력해주세요") @Size(min = 4, max = 4) String targetTagCode
     ) {
     }
 
-    public record ParticipantResponse(
+    public record SubmitPicksRequest(
+            @NotBlank(message = "내 참여자 정보가 필요합니다") String participantId,
+            @NotNull List<String> targetParticipantIds
+    ) {
+    }
+
+    public record BadgeDto(
+            String code,
+            String title,
+            String description,
+            boolean achieved
+    ) {
+    }
+
+    public record MetPersonDto(
             String participantId,
-            String name
+            String name,
+            String tagCode,
+            String metAt
     ) {
     }
 
-    /** 감정 하나의 집계 — 화면 막대 하나에 대응 */
-    public record MoodCount(
-            String mood,
-            String label,
-            long count,
-            int percent
+    public record PassportResponse(
+            String partyCode,
+            String partyName,
+            String participantId,
+            String name,
+            String tagCode,
+            boolean isHost,
+            boolean isClosed,
+            int metCount,
+            long totalParticipants,
+            int progressPercent,
+            List<BadgeDto> badges,
+            List<MetPersonDto> metPersons,
+            String missionTargetName,
+            boolean missionCleared,
+            String priceNotice
     ) {
     }
 
-    /** 호스트 개입 알림 */
-    public record Alert(
-            boolean active,
-            String message
-    ) {
-    }
-
-    /** 호스트 대시보드·참가자 화면이 폴링으로 받아가는 파티 현재 상태 */
     public record PartyStatus(
             String code,
             String name,
             int capacity,
             long participantCount,
-            long voteCount,
-            List<MoodCount> moods,
-            Alert alert,
+            long meetCount,
             boolean closed,
             String priceNotice
     ) {
     }
 
-    /** 파티 종료 후 리포트 — 시간대별 감정 추이 */
-    public record TimelinePoint(
-            String at,
-            Map<String, Long> counts
-    ) {
-    }
-
-    public record PartyReport(
-            String code,
+    public record MatchResponse(
+            String participantId,
             String name,
-            long participantCount,
-            long voteCount,
-            List<MoodCount> moods,
-            List<TimelinePoint> timeline
+            int matchedCount,
+            List<MetPersonDto> mutualMatches,
+            List<MetPersonDto> allMetPersons,
+            boolean reunionBadgeAchieved
     ) {
     }
 }
