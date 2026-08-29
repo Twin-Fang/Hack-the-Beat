@@ -25,14 +25,14 @@
 # - basic: version.yml only
 # ===
 
-version: "0.0.17"
-version_code: 18  # app build number
+version: "0.0.18"
+version_code: 19  # app build number
 project_types: ["react"] # first entry is primary
 project_paths: # 타입별 프로젝트 폴더 (레포 루트 기준 상대경로)
   react: "." # package.json
 metadata:
   last_updated: "2026-08-29"
-  last_updated_by: "EM-H20"
+  last_updated_by: "Cassiiopeia"
   default_branch: "main"
   integration_date: "2026-08-29"
   template:
