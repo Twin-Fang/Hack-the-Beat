@@ -19,3 +19,10 @@ npm run build    # dist/ 생성
 ## 배포
 
 `main` 브랜치에 push하면 GitHub Actions가 빌드 후 GitHub Pages로 자동 배포한다.
+
+---
+
+<!-- AUTO-VERSION-SECTION: DO NOT EDIT MANUALLY -->
+## 최신 버전 : v0.0.0
+
+[전체 버전 기록 보기](CHANGELOG.md)
