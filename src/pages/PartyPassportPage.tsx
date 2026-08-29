@@ -159,7 +159,7 @@ export default function PartyPassportPage() {
   }
 
   // 초대 링크 복사 (시나리오 2단계 완벽 대응)
-  const inviteUrl = `${window.location.origin}${window.location.pathname}?from=${
+  const inviteUrl = `${window.location.origin}${import.meta.env.BASE_URL}?party=${partyCode}&from=${
     session?.tagCode || ''
   }`
 
@@ -174,8 +174,10 @@ export default function PartyPassportPage() {
     showToast('복사되었습니다')
   }
 
-  // 1. 세션이 없거나 초대 링크(?from=)로 들어온 경우: 참가자 등록 화면 (시나리오 3단계 진입점)
-  if (!session || fromTag) {
+  // 1. 세션이 없는 경우, 또는 호스트가 자기 초대 링크(?from=)를 여는 경우: 참가자 등록 화면
+  // (호스트 예외는 "같은 브라우저에서 초대 링크 열기"를 검증하는 시나리오 대응 —
+  //  이미 참여한 게스트는 fromTag가 있어도 등록화면으로 되돌리지 않는다)
+  if (!session || (fromTag && session.isHost)) {
     return (
       <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center p-4">
         {toastMessage ? (
@@ -402,7 +404,7 @@ export default function PartyPassportPage() {
             {/* QR 코드 영역 */}
             <div className="bg-white p-4 rounded-2xl inline-flex justify-center shadow-inner border border-base-300 mx-auto mb-4">
               <QRCodeSVG
-                value={`${window.location.origin}${window.location.pathname}?from=${passport.tagCode}`}
+                value={`${window.location.origin}${import.meta.env.BASE_URL}?party=${partyCode}&from=${passport.tagCode}`}
                 size={160}
                 level="M"
                 includeMargin={false}

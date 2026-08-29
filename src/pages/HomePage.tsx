@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router'
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { randomCharacter } from '../lib/character'
@@ -10,7 +10,20 @@ import MyVaultModal from '../components/MyVaultModal'
 
 export default function HomePage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const saveSession = usePassportStore((s) => s.saveSession)
+
+  // 초대 링크는 정적 호스팅의 404 폴백을 피하려고 루트로 들어온다. 여기서 파티 화면으로 넘긴다
+  const invitedParty = searchParams.get('party')
+  const invitedFrom = searchParams.get('from')
+  useEffect(() => {
+    if (invitedParty) {
+      navigate(
+        `/party/${invitedParty.toUpperCase()}${invitedFrom ? `?from=${invitedFrom}` : ''}`,
+        { replace: true }
+      )
+    }
+  }, [invitedParty, invitedFrom, navigate])
 
   const [isVaultOpen, setIsVaultOpen] = useState(false)
   const [partyName, setPartyName] = useState('')
