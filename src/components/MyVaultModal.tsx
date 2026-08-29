@@ -73,7 +73,12 @@ export default function MyVaultModal({ isOpen, onClose }: MyVaultModalProps) {
           </button>
         </div>
       </div>
-      <div className="modal-backdrop" onClick={onClose} />
+      <button
+        type="button"
+        className="modal-backdrop"
+        aria-label="내 증표함 닫기"
+        onClick={onClose}
+      />
     </div>
   )
 }

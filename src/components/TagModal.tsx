@@ -44,12 +44,15 @@ export default function TagModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label">
+            <label className="label" htmlFor="targetTagCode">
               <span className="label-text font-medium">상대방 4자리 코드</span>
             </label>
             <input
+              id="targetTagCode"
+              name="targetTagCode"
               type="text"
               maxLength={4}
+              aria-label="상대방 4자리 코드"
               placeholder="예: 7K2M"
               className="input input-bordered w-full text-center text-2xl font-mono tracking-widest uppercase"
               value={code}
@@ -82,7 +85,12 @@ export default function TagModal({
           </div>
         </form>
       </div>
-      <div className="modal-backdrop" onClick={onClose} />
+      <button
+        type="button"
+        className="modal-backdrop"
+        aria-label="코드로 태그 창 닫기"
+        onClick={onClose}
+      />
     </div>
   )
 }

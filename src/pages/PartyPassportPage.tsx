@@ -23,6 +23,7 @@ export default function PartyPassportPage() {
   const accumulateBadges = usePassportStore((s) => s.accumulateBadges)
 
   const [nameInput, setNameInput] = useState('')
+  const [joinError, setJoinError] = useState<string | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [isTagModalOpen, setIsTagModalOpen] = useState(false)
   const [isVaultOpen, setIsVaultOpen] = useState(false)
@@ -111,7 +112,12 @@ export default function PartyPassportPage() {
 
   const handleJoinSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!nameInput.trim()) return
+    // 버튼을 비활성화해 막지 않고 눌린 뒤 이유를 알려준다
+    if (!nameInput.trim()) {
+      setJoinError('이름을 입력해주세요.')
+      return
+    }
+    setJoinError(null)
     joinMutation.mutate(nameInput.trim())
   }
 
@@ -150,7 +156,7 @@ export default function PartyPassportPage() {
                 PARTY: {partyCode}
               </span>
               <h2 className="card-title text-2xl font-bold justify-center">
-                파티 패스포트 참여
+                패스포트 발급
               </h2>
               <p className="text-xs text-base-content/70 mt-1">
                 {fromTag ? '초대자와 연결되어 바로 첫 증표를 받습니다!' : '파티에 입장하여 패스포트를 발급받으세요.'}
@@ -170,12 +176,16 @@ export default function PartyPassportPage() {
                   data-testid="participant-name-input"
                   placeholder="예: 김서준"
                   className="input input-bordered w-full"
+                  aria-required="true"
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   autoFocus
-                  required
                 />
               </div>
+
+              {joinError ? (
+                <p className="text-error text-xs">{joinError}</p>
+              ) : null}
 
               {joinMutation.isError ? (
                 <p className="text-error text-xs">
@@ -189,7 +199,7 @@ export default function PartyPassportPage() {
                 type="submit"
                 data-testid="join-party-btn"
                 className="btn btn-primary btn-block"
-                disabled={joinMutation.isPending || !nameInput.trim()}
+                disabled={joinMutation.isPending}
               >
                 {joinMutation.isPending ? (
                   <span className="loading loading-spinner loading-sm" />
