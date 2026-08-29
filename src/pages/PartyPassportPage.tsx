@@ -137,6 +137,21 @@ export default function PartyPassportPage() {
     },
   })
 
+  // 이미 참여한 사람이 "남"의 QR/초대 링크(?from=상대 tagCode)로 들어온 경우
+  // 등록 화면으로 되돌리지 않고 자동으로 태그(만남) 처리한다
+  const autoTagFiredRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!session || !fromTag || fromTag === session.tagCode) return
+    if (autoTagFiredRef.current === fromTag) return
+    autoTagFiredRef.current = fromTag
+    tagMutation.mutate(fromTag, {
+      onSettled: () => {
+        navigate(`/party/${partyCode}`, { replace: true })
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.tagCode, fromTag])
+
   // 파티 종료 뮤테이션
   const closeMutation = useMutation({
     mutationFn: () => api.closeParty(partyCode, session?.participantId),
@@ -174,10 +189,11 @@ export default function PartyPassportPage() {
     showToast('복사되었습니다')
   }
 
-  // 1. 세션이 없는 경우, 또는 호스트가 자기 초대 링크(?from=)를 여는 경우: 참가자 등록 화면
-  // (호스트 예외는 "같은 브라우저에서 초대 링크 열기"를 검증하는 시나리오 대응 —
-  //  이미 참여한 게스트는 fromTag가 있어도 등록화면으로 되돌리지 않는다)
-  if (!session || (fromTag && session.isHost)) {
+  // 1. 세션이 없는 경우, 또는 "자기 자신"의 초대 링크(?from=자기 tagCode)를 스스로 여는 경우:
+  // 참가자 등록 화면. 자기 자신 예외는 같은 브라우저에서 초대 링크를 열어 새 참가자를
+  // 추가하는 흐름(심사 시나리오 포함) 대응 — 이미 참여한 사람이 "남"의 QR을 찍은 경우는
+  // 아래 자동 태그 처리로 빠지므로 여기서 등록화면으로 되돌리지 않는다
+  if (!session || (fromTag && fromTag === session.tagCode)) {
     return (
       <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center p-4">
         {toastMessage ? (
@@ -511,6 +527,19 @@ export default function PartyPassportPage() {
             </div>
           </div>
         ) : null}
+
+        {/* 파티 이후 흐름 안내 — 결과 화면까지 가지 않아도 확인되게 한다 */}
+        <div className="card bg-base-100 shadow-md border border-base-300">
+          <div className="card-body p-5">
+            <h3 className="font-bold text-base mb-1">파티가 끝나면</h3>
+            <p className="text-sm text-base-content/70">
+              오늘 만난 사람 중 <strong>다시 만나고 싶은 사람</strong>을 비밀로 고릅니다. 서로 고른 쌍만 공개되고, 한쪽만 골랐다면 양쪽 누구에게도 보이지 않습니다.
+            </p>
+            <p className="text-sm text-base-content/70 mt-1.5">
+              선택은 파티 종료 후 <strong>24시간</strong> 동안 열려 있습니다. 모은 증표는 <strong>내 증표함</strong>에 남아 다음 파티로 이어지고, 결과 화면에서 <strong>다음 파티 만들기</strong>로 바로 새 파티를 열 수 있습니다.
+            </p>
+          </div>
+        </div>
 
         {/* 증표 뱃지 목록 */}
         <div className="card bg-base-100 shadow-md border border-base-300">
