@@ -6,11 +6,18 @@
 
 | 구분 | 주소 |
 |---|---|
-| API (HTTP 직결) | `http://suh-project.synology.me:8096` |
-| 헬스체크 | `http://suh-project.synology.me:8096/health` |
+| **API (도메인)** | `https://api.hack-the-beat.suhsaechan.kr` |
+| API (포트 직결) | `http://suh-project.synology.me:8096` |
+| 헬스체크 | `https://api.hack-the-beat.suhsaechan.kr/health` |
 
-> 프론트가 HTTPS(GitHub Pages)라 브라우저에서 HTTP API를 호출하면 혼합 콘텐츠로 차단된다.
-> 실제 서비스에서는 `https://hack-the-beat.suhsaechan.kr`(DSM 역방향 프록시 → 8096) 를 사용한다.
+> 프론트가 HTTPS(GitHub Pages)라 브라우저에서 HTTP 주소를 호출하면 혼합 콘텐츠로 차단된다.
+> **브라우저에서 부를 때는 반드시 `https://api.hack-the-beat.suhsaechan.kr` 를 쓴다.**
+> 포트 직결 주소는 서버 점검·curl 테스트용이다.
+
+## 인증·보안
+
+**없다.** 로그인·토큰·권한 검사가 전혀 없고 CORS는 모든 오리진·메서드·헤더에 열려 있다.
+파티 6자리 코드를 아는 사람은 누구나 조회·참여·기록할 수 있다.
 
 ## 스택
 
@@ -117,5 +124,6 @@ Gradle 빌드 → Docker Hub(`cassiiopeia/hack-the-beat-back-container`) 푸시 
 | 포트 | `8096` → 컨테이너 8080 |
 | 네트워크 | `postgres_default` (DB 호스트명 `postgres`) |
 | 재시작 정책 | `unless-stopped` |
+| 도메인 연결 | DSM 역방향 프록시 `api.hack-the-beat.suhsaechan.kr:443` → `localhost:8096` |
 
 필요한 GitHub Actions 시크릿: `DOCKERHUB_USERNAME` `DOCKERHUB_TOKEN` `SERVER_HOST` `SERVER_USER` `SERVER_PASSWORD` `DB_URL` `DB_USERNAME` `DB_PASSWORD` (등록 완료)

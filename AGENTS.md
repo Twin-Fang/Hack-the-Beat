@@ -54,8 +54,9 @@ src/
 ## 서버 (server/)
 
 - Spring Boot 3.4.1 + Java 17 + JPA + PostgreSQL. 인증 없음, 파티 6자리 코드로 접근
-- API: `http://suh-project.synology.me:8096` (HTTPS는 `https://hack-the-beat.suhsaechan.kr` — DSM 역방향 프록시)
-- **프론트가 HTTPS라 HTTP API를 직접 부르면 혼합 콘텐츠로 차단된다.** 브라우저에서 호출할 땐 반드시 HTTPS 주소를 쓴다
+- API: `https://api.hack-the-beat.suhsaechan.kr` (포트 직결 `http://suh-project.synology.me:8096` — curl 테스트용)
+- **프론트가 HTTPS라 HTTP 주소를 직접 부르면 혼합 콘텐츠로 차단된다.** 브라우저에서는 반드시 `https://api.hack-the-beat.suhsaechan.kr` 를 쓴다
+- 인증·권한 없음. CORS는 모든 오리진에 열려 있다
 - 엔드포인트·응답 형태는 [server/README.md](server/README.md)
 - `main`에 `server/**` push → Actions가 빌드·Docker Hub 푸시·NAS 배포·헬스체크까지 자동
 

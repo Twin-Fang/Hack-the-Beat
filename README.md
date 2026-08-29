@@ -33,7 +33,7 @@
 **서버** (`server/`)
 
 - Spring Boot 3.4.1 + Java 17 + JPA + PostgreSQL
-- API: `http://suh-project.synology.me:8096`
+- API: `https://api.hack-the-beat.suhsaechan.kr` (인증 없음, CORS 전면 개방)
 
 ## 실행
 
