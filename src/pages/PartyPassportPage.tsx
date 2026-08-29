@@ -183,9 +183,17 @@ export default function PartyPassportPage() {
   }
 
   // 2. 패스포트 로딩/에러 상태
+  // join 성공 토스트가 로딩 화면 전환 중에 사라지지 않도록 여기서도 렌더링
   if (passportQuery.isPending) {
     return (
       <div className="min-h-screen bg-base-200 flex items-center justify-center">
+        {toastMessage ? (
+          <div className="toast toast-top toast-center z-50">
+            <div className="alert alert-success shadow-lg">
+              <span>{toastMessage}</span>
+            </div>
+          </div>
+        ) : null}
         <span className="loading loading-spinner loading-lg text-primary" />
       </div>
     )
@@ -194,6 +202,13 @@ export default function PartyPassportPage() {
   if (passportQuery.isError) {
     return (
       <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+        {toastMessage ? (
+          <div className="toast toast-top toast-center z-50">
+            <div className="alert alert-success shadow-lg">
+              <span>{toastMessage}</span>
+            </div>
+          </div>
+        ) : null}
         <div className="alert alert-error max-w-sm">
           <span>{passportQuery.error.message}</span>
         </div>
