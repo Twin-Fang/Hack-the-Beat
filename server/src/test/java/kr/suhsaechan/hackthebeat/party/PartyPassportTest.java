@@ -176,5 +176,22 @@ class PartyPassportTest {
         PartyStatus closedStatus = partyService.close(host.partyCode(), host.participantId());
         assertThat(closedStatus.closed()).isTrue();
     }
+
+    @Test
+    @DisplayName("participantId 없이 close 호출 시에도 403 Forbidden (코드만 아는 제3자의 무단 종료 차단)")
+    void closeWithoutParticipantIdIsForbiddenTest() {
+        PassportResponse host = partyService.createParty(new CreatePartyRequest("무단종료 방지 파티", "호스트", 20));
+
+        assertThatThrownBy(() -> partyService.close(host.partyCode(), null))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> {
+                    ResponseStatusException ex = (ResponseStatusException) e;
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                });
+
+        assertThatThrownBy(() -> partyService.close(host.partyCode(), "  "))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(e -> assertThat(((ResponseStatusException) e).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+    }
 }
 

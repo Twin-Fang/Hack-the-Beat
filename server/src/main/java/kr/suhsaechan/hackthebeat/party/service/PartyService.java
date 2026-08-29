@@ -159,11 +159,13 @@ public class PartyService {
     @Transactional
     public PartyStatus close(String code, String participantId) {
         Party party = findParty(code);
-        if (participantId != null && !participantId.isBlank()) {
-            Participant participant = findParticipant(participantId);
-            if (!participant.getParty().getPartyId().equals(party.getPartyId()) || !participant.isHost()) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "호스트만 파티를 종료할 수 있습니다");
-            }
+        // participantId 미제공 시 검증을 건너뛰면 코드만 알아도 누구나 종료 가능해지므로 기본 거부한다
+        if (participantId == null || participantId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "호스트만 파티를 종료할 수 있습니다");
+        }
+        Participant participant = findParticipant(participantId);
+        if (!participant.getParty().getPartyId().equals(party.getPartyId()) || !participant.isHost()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "호스트만 파티를 종료할 수 있습니다");
         }
         party.close();
         return getStatus(code);
