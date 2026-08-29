@@ -23,6 +23,6 @@ npm run build    # dist/ 생성
 ---
 
 <!-- AUTO-VERSION-SECTION: DO NOT EDIT MANUALLY -->
-## 최신 버전 : v0.0.0
+## 최신 버전 : v0.0.0 (2026-08-29)
 
 [전체 버전 기록 보기](CHANGELOG.md)
