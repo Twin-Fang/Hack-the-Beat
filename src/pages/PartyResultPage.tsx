@@ -120,6 +120,16 @@ export default function PartyResultPage() {
           </p>
         </div>
 
+        {/* 재선택 마감 안내 (B4 리텐션 트리거: 종료 24시간 이내) */}
+        {result.picksDeadline ? (
+          <div className="alert alert-info text-xs py-2.5 px-3">
+            <span>
+              ⏰ 재선택 마감까지 <strong>24시간</strong> — {result.picksDeadline}까지 선택하면
+              상호 매칭 결과를 확인할 수 있어요.
+            </span>
+          </div>
+        ) : null}
+
         {/* 상호 선택 폼 */}
         <div className="card bg-base-100 shadow-xl border border-base-300">
           <div className="card-body p-6">

@@ -49,6 +49,7 @@ export interface MatchResponse {
   mutualMatches: MetPersonDto[]
   allMetPersons: MetPersonDto[]
   reunionBadgeAchieved: boolean
+  picksDeadline?: string
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {

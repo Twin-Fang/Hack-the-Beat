@@ -89,7 +89,8 @@ public final class PartyDto {
             int matchedCount,
             List<MetPersonDto> mutualMatches,
             List<MetPersonDto> allMetPersons,
-            boolean reunionBadgeAchieved
+            boolean reunionBadgeAchieved,
+            String picksDeadline
     ) {
     }
 }

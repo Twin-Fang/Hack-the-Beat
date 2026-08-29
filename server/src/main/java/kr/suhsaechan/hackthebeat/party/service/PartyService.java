@@ -32,6 +32,7 @@ public class PartyService {
     private static final int FREE_CAPACITY = 20;
     private static final int PAID_PRICE = 9900;
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final DateTimeFormatter DEADLINE_FORMAT = DateTimeFormatter.ofPattern("MM/dd HH:mm");
 
     private final PartyRepository partyRepository;
     private final ParticipantRepository participantRepository;
@@ -176,6 +177,8 @@ public class PartyService {
                 .toList();
 
         List<MetPersonDto> allMet = getMyMetPersons(party, me);
+        String picksDeadline = party.getPicksDeadline() == null
+                ? null : party.getPicksDeadline().format(DEADLINE_FORMAT);
 
         return new MatchResponse(
                 me.getParticipantId().toString(),
@@ -183,7 +186,8 @@ public class PartyService {
                 matchDtos.size(),
                 matchDtos,
                 allMet,
-                !matchDtos.isEmpty()
+                !matchDtos.isEmpty(),
+                picksDeadline
         );
     }
 

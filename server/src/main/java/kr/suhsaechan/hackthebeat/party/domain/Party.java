@@ -52,4 +52,9 @@ public class Party {
     public boolean isClosed() {
         return this.closedAt != null;
     }
+
+    /** 상호 재선택(Pick) 마감 시각. 종료 후 24시간 — 화면에 노출해 B4 리텐션 트리거 근거로 쓴다. */
+    public LocalDateTime getPicksDeadline() {
+        return this.closedAt == null ? null : this.closedAt.plusHours(24);
+    }
 }
