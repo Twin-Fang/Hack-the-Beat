@@ -8,10 +8,13 @@ export interface BadgeDto {
 }
 
 export interface MetPersonDto {
-  participantId: string
   name: string
   tagCode: string
   metAt?: string
+  character?: string
+  interests?: string[]
+  myLevel?: number
+  theirLevel?: number
 }
 
 export interface PassportResponse {
@@ -30,6 +33,11 @@ export interface PassportResponse {
   missionTargetName?: string
   missionCleared: boolean
   priceNotice: string
+  character?: string
+  interests?: string[]
+  growthStage?: number
+  missionTargetCharacter?: string
+  missionTargetInterests?: string[]
 }
 
 export interface PartyStatus {
@@ -40,6 +48,11 @@ export interface PartyStatus {
   meetCount: number
   closed: boolean
   priceNotice: string
+}
+
+export interface PickItem {
+  targetTagCode: string
+  level: number
 }
 
 export interface MatchResponse {
@@ -70,7 +83,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  createParty: (data: { name: string; hostName?: string; capacity?: number }) =>
+  createParty: (data: {
+    name: string
+    hostName?: string
+    capacity?: number
+    hostCharacter?: string
+    hostInterests?: string[]
+  }) =>
     request<PassportResponse>('/api/parties', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -79,7 +98,15 @@ export const api = {
   getPartyStatus: (code: string) =>
     request<PartyStatus>(`/api/parties/${encodeURIComponent(code)}`),
 
-  joinParty: (code: string, data: { name: string; fromTagCode?: string }) =>
+  joinParty: (
+    code: string,
+    data: {
+      name: string
+      fromTagCode?: string
+      character?: string
+      interests?: string[]
+    }
+  ) =>
     request<PassportResponse>(`/api/parties/${encodeURIComponent(code)}/join`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -96,14 +123,19 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  closeParty: (code: string) =>
+  closeParty: (code: string, participantId?: string) =>
     request<PartyStatus>(`/api/parties/${encodeURIComponent(code)}/close`, {
       method: 'POST',
+      body: participantId ? JSON.stringify({ participantId }) : undefined,
     }),
 
   submitPicks: (
     code: string,
-    data: { participantId: string; targetParticipantIds: string[] }
+    data: {
+      participantId: string
+      picks?: PickItem[]
+      targetParticipantIds?: string[]
+    }
   ) =>
     request<MatchResponse>(`/api/parties/${encodeURIComponent(code)}/picks`, {
       method: 'POST',

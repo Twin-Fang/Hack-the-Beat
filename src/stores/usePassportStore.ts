@@ -7,6 +7,7 @@ export interface SessionData {
   tagCode: string
   name: string
   isHost: boolean
+  character?: string
 }
 
 export interface SavedBadge {
@@ -15,6 +16,7 @@ export interface SavedBadge {
   description: string
   achievedAt: string
   partyName: string
+  character?: string
 }
 
 interface PassportStoreState {
@@ -22,7 +24,7 @@ interface PassportStoreState {
   savedBadges: SavedBadge[]
   saveSession: (session: SessionData) => void
   getSession: (partyCode: string) => SessionData | undefined
-  accumulateBadges: (partyName: string, badges: BadgeDto[]) => void
+  accumulateBadges: (partyName: string, badges: BadgeDto[], character?: string) => void
 }
 
 const SESSIONS_KEY = 'htb_passport_sessions'
@@ -62,7 +64,7 @@ export const usePassportStore = create<PassportStoreState>((set, get) => ({
     return get().sessions[partyCode.toUpperCase()]
   },
 
-  accumulateBadges: (partyName: string, badges: BadgeDto[]) => {
+  accumulateBadges: (partyName: string, badges: BadgeDto[], character?: string) => {
     const current = get().savedBadges
     const achievedNow = badges.filter((b) => b.achieved)
     const newItems: SavedBadge[] = []
@@ -83,6 +85,7 @@ export const usePassportStore = create<PassportStoreState>((set, get) => ({
           description: b.description,
           achievedAt: nowStr,
           partyName,
+          character,
         })
       }
     }

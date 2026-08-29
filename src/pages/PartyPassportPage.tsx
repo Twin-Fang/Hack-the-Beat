@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useSearchParams, useNavigate } from 'react-router'
+import { useParams, useSearchParams, useNavigate, useLocation } from 'react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { QRCodeSVG } from 'qrcode.react'
 import { api, type PassportResponse } from '../lib/api'
@@ -12,6 +12,7 @@ export default function PartyPassportPage() {
   const { code } = useParams<{ code: string }>()
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const queryClient = useQueryClient()
 
   const partyCode = (code || '').toUpperCase()
@@ -32,6 +33,16 @@ export default function PartyPassportPage() {
     setTimeout(() => setToastMessage(null), 3000)
   }
 
+  // 파티 생성 직후 넘어오면 완료 문구가 화면 전환으로 사라지므로 여기서 다시 띄운다
+  useEffect(() => {
+    const state = location.state as { justCreated?: boolean } | null
+    if (state?.justCreated) {
+      showToast('초대 링크가 생성되었습니다')
+    }
+    // 진입 시 1회만 실행한다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // 패스포트 데이터 쿼리
   const passportQuery = useQuery({
     queryKey: ['passport', partyCode, session?.participantId],
@@ -43,7 +54,11 @@ export default function PartyPassportPage() {
   // 뱃지 획득 시 로컬스토리지 누적
   useEffect(() => {
     if (passportQuery.data) {
-      accumulateBadges(passportQuery.data.partyName, passportQuery.data.badges)
+      accumulateBadges(
+        passportQuery.data.partyName,
+        passportQuery.data.badges,
+        passportQuery.data.character
+      )
     }
   }, [passportQuery.data, accumulateBadges])
 
@@ -61,8 +76,10 @@ export default function PartyPassportPage() {
         tagCode: data.tagCode,
         name: data.name,
         isHost: data.isHost,
+        character: data.character,
       })
       showToast('참여 완료')
+      navigate(`/party/${partyCode}`, { replace: true })
     },
   })
 
@@ -84,7 +101,7 @@ export default function PartyPassportPage() {
 
   // 파티 종료 뮤테이션
   const closeMutation = useMutation({
-    mutationFn: () => api.closeParty(partyCode),
+    mutationFn: () => api.closeParty(partyCode, session?.participantId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['passport', partyCode] })
       showToast('파티가 종료되었습니다.')
@@ -114,8 +131,8 @@ export default function PartyPassportPage() {
     showToast('복사되었습니다')
   }
 
-  // 1. 세션이 없는 경우: 참가자 등록 화면 (시나리오 3단계 진입점)
-  if (!session) {
+  // 1. 세션이 없거나 초대 링크(?from=)로 들어온 경우: 참가자 등록 화면 (시나리오 3단계 진입점)
+  if (!session || fromTag) {
     return (
       <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center p-4">
         {toastMessage ? (
@@ -142,11 +159,15 @@ export default function PartyPassportPage() {
 
             <form onSubmit={handleJoinSubmit} className="space-y-4">
               <div>
-                <label className="label">
+                <label className="label" htmlFor="participantName">
                   <span className="label-text font-medium">이름</span>
                 </label>
                 <input
+                  id="participantName"
+                  name="participantName"
                   type="text"
+                  aria-label="이름"
+                  data-testid="participant-name-input"
                   placeholder="예: 김서준"
                   className="input input-bordered w-full"
                   value={nameInput}
@@ -166,6 +187,7 @@ export default function PartyPassportPage() {
 
               <button
                 type="submit"
+                data-testid="join-party-btn"
                 className="btn btn-primary btn-block"
                 disabled={joinMutation.isPending || !nameInput.trim()}
               >
@@ -282,7 +304,12 @@ export default function PartyPassportPage() {
               </span>
             </div>
 
-            <h2 className="text-2xl font-black">{passport.name}</h2>
+            <div className="flex items-center justify-center gap-2">
+              <h2 className="text-2xl font-black">{passport.name}</h2>
+              <span className="badge badge-success badge-sm font-semibold">
+                참여 완료
+              </span>
+            </div>
             <p className="text-xs text-base-content/60 mb-4">
               상대방 카메라로 내 QR을 비추거나 4자리 코드를 알려주세요!
             </p>
@@ -318,8 +345,8 @@ export default function PartyPassportPage() {
 
             {/* 초대 링크 URL 텍스트 노출 (시나리오 2단계 요구사항) */}
             <div className="mt-3 p-2 bg-base-200 rounded-box text-left">
-              <p className="text-xs text-base-content/60 font-medium mb-0.5">
-                초대 링크:
+              <p className="text-xs text-success font-semibold mb-0.5">
+                초대 링크가 생성되었습니다
               </p>
               <p className="text-xs font-mono text-base-content/80 break-all select-all">
                 {inviteUrl}
@@ -405,7 +432,7 @@ export default function PartyPassportPage() {
               <div className="divide-y divide-base-200 max-h-56 overflow-y-auto">
                 {passport.metPersons.map((p) => (
                   <div
-                    key={p.participantId}
+                    key={p.tagCode}
                     className="py-2.5 flex justify-between items-center"
                   >
                     <div className="flex items-center gap-2">

@@ -33,6 +33,7 @@ export default function PartyResultPage() {
     mutationFn: (ids: string[]) =>
       api.submitPicks(partyCode, {
         participantId: session!.participantId,
+        picks: ids.map((tagCode) => ({ targetTagCode: tagCode, level: 2 })),
         targetParticipantIds: ids,
       }),
     onSuccess: (data) => {
@@ -145,10 +146,10 @@ export default function PartyResultPage() {
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                   {allMet.map((person) => {
-                    const isChecked = selectedIds.includes(person.participantId)
+                    const isChecked = selectedIds.includes(person.tagCode)
                     return (
                       <label
-                        key={person.participantId}
+                        key={person.tagCode}
                         className={`flex items-center justify-between p-3 rounded-box border cursor-pointer transition-all ${
                           isChecked
                             ? 'bg-primary/10 border-primary shadow-sm'
@@ -160,7 +161,7 @@ export default function PartyResultPage() {
                             type="checkbox"
                             className="checkbox checkbox-primary"
                             checked={isChecked}
-                            onChange={() => toggleSelect(person.participantId)}
+                            onChange={() => toggleSelect(person.tagCode)}
                           />
                           <div>
                             <span className="font-bold text-sm">
@@ -214,7 +215,7 @@ export default function PartyResultPage() {
               <div className="space-y-2">
                 {mutualMatches.map((m) => (
                   <div
-                    key={m.participantId}
+                    key={m.tagCode}
                     className="p-3.5 bg-gradient-to-r from-primary/15 to-secondary/15 rounded-box border border-primary/30 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">

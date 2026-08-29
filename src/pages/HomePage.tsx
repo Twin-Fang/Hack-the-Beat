@@ -25,11 +25,12 @@ export default function HomePage() {
         tagCode: data.tagCode,
         name: data.name,
         isHost: data.isHost,
+        character: data.character,
       })
       setToastMessage('초대 링크가 생성되었습니다')
       setIsCreateModalOpen(false)
       setTimeout(() => {
-        navigate(`/party/${data.partyCode}`)
+        navigate(`/party/${data.partyCode}`, { state: { justCreated: true } })
       }, 300)
     },
   })
@@ -87,6 +88,7 @@ export default function HomePage() {
                 <input
                   type="text"
                   maxLength={6}
+                  aria-label="6자리 파티 코드"
                   placeholder="6자리 파티 코드 입력"
                   className="input input-bordered join-item w-full uppercase font-mono tracking-widest text-center"
                   value={joinCode}
@@ -131,11 +133,15 @@ export default function HomePage() {
 
             <form onSubmit={handleCreateSubmit} className="space-y-4">
               <div>
-                <label className="label">
+                <label className="label" htmlFor="partyName">
                   <span className="label-text font-medium">파티 이름</span>
                 </label>
                 <input
+                  id="partyName"
+                  name="partyName"
                   type="text"
+                  aria-label="파티 이름"
+                  data-testid="party-name-input"
                   placeholder="예: 금요일 파티"
                   className="input input-bordered w-full"
                   value={partyName}
@@ -164,20 +170,23 @@ export default function HomePage() {
                 </button>
                 <button
                   type="submit"
+                  data-testid="submit-create-party-btn"
                   className="btn btn-primary flex-1"
                   disabled={createMutation.isPending || !partyName.trim()}
                 >
                   {createMutation.isPending ? (
                     <span className="loading loading-spinner loading-sm" />
                   ) : (
-                    '파티 만들기'
+                    '만들기'
                   )}
                 </button>
               </div>
             </form>
           </div>
-          <div
+          <button
+            type="button"
             className="modal-backdrop"
+            aria-label="파티 만들기 창 닫기"
             onClick={() => setIsCreateModalOpen(false)}
           />
         </div>
