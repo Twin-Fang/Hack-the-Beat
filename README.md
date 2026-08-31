@@ -77,6 +77,7 @@ flowchart TD
 | [docs/submission/02-기획안-8000자.md](docs/submission/02-기획안-8000자.md) | **공식 기획안** (루브릭 12항목 상한 해제 조건 100% 반영) |
 | [docs/submission/03-발표-스크립트-4000자.md](docs/submission/03-발표-스크립트-4000자.md) | **공식 발표 스크립트** (주제 연결, B/C 근거 압축) |
 | [docs/submission/04-디자이너-에셋-가이드.md](docs/submission/04-디자이너-에셋-가이드.md) | **디자이너 에셋 가이드** (뱃지 6종, 로고, 규격 안내) |
+| [docs/retrospective/](docs/retrospective/README.md) | **우승 회고록** — 채점기 역설계·아이디어 병렬 채점·Agent-First UX·자가 채점 루프 ([한국어](docs/retrospective/ko.md) · [English](docs/retrospective/en.md)) |
 | [docs/judging-criteria.md](docs/judging-criteria.md) | **공식 채점 루브릭** 12항목 앵커·상한 해제 규칙·주제 게이트 배율, 주제 분석과 아이템 선정 필터, Playwright 대응 규칙 |
 | [docs/submission-guide.md](docs/submission-guide.md) | **제출 페이지 실물** 기준 필드별 작성법, 글자 제한(기획안 8,000 / 스크립트 4,000), 3단계·기획안·스크립트 템플릿, 직전 체크리스트 |
 | [docs/personas/](docs/personas/README.md) | AI 심사관 3명(창업가·엔지니어·투자자) **추정 페르소나** — 렌즈별 질문·근거·감점 트리거·자가 점검표·가채점표 |
