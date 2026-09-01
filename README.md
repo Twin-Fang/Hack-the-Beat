@@ -1,12 +1,15 @@
 # Hack-the-Beat — 파티 패스포트 (Party Passport) 🛂
 
-2026 I/O Extended: Hack the Beat 출품작 — 주제 **"Make the Party Better"** (파티를 더 잘 즐길 수 있는 서비스).
+**🏆 2026 I/O Extended: Hack the Beat 최종 1위** — 주제 **"Make the Party Better"** (파티를 더 잘 즐길 수 있는 서비스).
+
+AI 심사관 3명(창업가·엔지니어·투자자)이 9회 채점하고 Playwright가 배포 링크를 직접 조작해 평가하는 방식의 해커톤에서, 3시간 만에 만들어 1위를 했습니다. 어떻게 접근했는지는 [회고록](docs/retrospective/ko.md)에 정리했습니다 ([English](docs/retrospective/en.md)).
 
 > **"파티에서 말 건 사람 수가 패스포트의 도장이 된다."**  
 > 참가자가 서로의 QR을 태그해 "만난 사람 수"를 쌓고 증표를 수집하며, 파티 종료 후 서로 다시 만나고 싶은 사람을 비밀리에 선택하는 웹 서비스입니다.
 
 🔗 **배포 주소**: https://twin-fang.github.io/Hack-the-Beat/  
-🚀 **백엔드 API**: `https://api.hack-the-beat.suhsaechan.kr`
+🚀 **백엔드 API**: `https://api.hack-the-beat.suhsaechan.kr`  
+📝 **회고록**: [한국어](docs/retrospective/ko.md) · [English](docs/retrospective/en.md)
 
 ---
 
