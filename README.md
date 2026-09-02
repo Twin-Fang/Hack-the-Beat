@@ -110,6 +110,6 @@ cd server
 ---
 
 <!-- AUTO-VERSION-SECTION: DO NOT EDIT MANUALLY -->
-## 최신 버전 : v0.0.33 (2026-09-01)
+## 최신 버전 : v0.0.35 (2026-09-02)
 
 [전체 버전 기록 보기](CHANGELOG.md)
