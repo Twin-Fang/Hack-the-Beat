@@ -1,62 +1,77 @@
-# Hack-the-Beat — 파티 패스포트 (Party Passport) 🛂
+# Hack-the-Beat — Party Passport 🛂
 
-**🏆 2026 I/O Extended: Hack the Beat 최종 1위** — 주제 **"Make the Party Better"** (파티를 더 잘 즐길 수 있는 서비스).
+**English** | [한국어](README.ko.md)
 
-AI 심사관 3명(창업가·엔지니어·투자자)이 9회 채점하고 Playwright가 배포 링크를 직접 조작해 평가하는 방식의 해커톤에서, 3시간 만에 만들어 1위를 했습니다. 어떻게 접근했는지는 [LinkedIn 글](https://lnkd.in/p/gfJcFfSd)과 [회고록](docs/retrospective/ko.md)에 정리했습니다 ([English](docs/retrospective/en.md)).
+**🏆 1st place at 2026 I/O Extended: Hack the Beat** — theme: **"Make the Party Better."**
 
-> **"파티에서 말 건 사람 수가 패스포트의 도장이 된다."**  
-> 참가자가 서로의 QR을 태그해 "만난 사람 수"를 쌓고 증표를 수집하며, 파티 종료 후 서로 다시 만나고 싶은 사람을 비밀리에 선택하는 웹 서비스입니다.
+Built in about three hours for a hackathon where the judges were not human: three AI judges (founder, engineer, investor) scored the project nine times, and Playwright opened the deployed link and clicked through the app itself. How we approached it is in the [retrospective](docs/retrospective/en.md) ([한국어](docs/retrospective/ko.md)) and on [LinkedIn](https://lnkd.in/p/gfJcFfSd).
 
-🔗 **배포 주소**: https://twin-fang.github.io/Hack-the-Beat/  
-🚀 **백엔드 API**: `https://api.hack-the-beat.suhsaechan.kr`  
-📝 **회고**: [LinkedIn 글](https://lnkd.in/p/gfJcFfSd) · 전문 [한국어](docs/retrospective/ko.md) · [English](docs/retrospective/en.md)
+> **"Every person you talk to at the party becomes a stamp in your passport."**  
+> Guests scan each other's QR codes to count the people they've met, collect badges along the way, and after the party secretly pick who they'd like to see again. Only mutual picks are revealed.
 
----
+🔗 **Live demo**: https://twin-fang.github.io/Hack-the-Beat/ — no sign-up, no app install. The UI is in Korean.  
+🚀 **Backend API**: `https://api.hack-the-beat.suhsaechan.kr`
 
-## 📋 핵심 플로우 3단계 (심사 시나리오 글자 단위 일치)
+<p align="center">
+  <img src="docs/images/demo.gif" alt="Creating a party, copying the invite link, and joining through it to earn the first badge" width="300">
+</p>
 
-1. **1단계** — 첫 화면에서 **"파티 만들기"** 버튼을 누르고 **"파티 이름"**에 **"금요일 파티"**를 입력한 뒤 **"파티 만들기"**를 누른다. **"초대 링크가 생성되었습니다"**가 보이고 주소가 `/party/`로 바뀌면 성공
-2. **2단계** — **"초대 링크 복사"** 버튼을 누른다. **"복사되었습니다"**가 보이고 화면에 초대 링크(URL)가 표시되면 성공
-3. **3단계** — 표시된 초대 링크로 접속해 **"이름"**에 **"김서준"**을 입력하고 **"참여하기"**를 누른다. **"참여 완료"**와 **"만난 사람 1명"**, **"첫 만남"**이 보이면 성공
+| Create a party | Your passport & QR | Join via invite link | Collect badges | Mutual match after the party |
+|:---:|:---:|:---:|:---:|:---:|
+| <img src="docs/images/01-home.png" alt="Home screen: enter a party name and create a party" width="160"> | <img src="docs/images/02-passport.png" alt="Passport with a 4-character code, QR code, and copy-invite-link button" width="160"> | <img src="docs/images/03-join.png" alt="Joining from an invite link: pick a name, character, and interests" width="160"> | <img src="docs/images/04-badges.png" alt="Four of six badges earned and the list of people met" width="160"> | <img src="docs/images/05-result.png" alt="Result screen showing only the people who picked each other" width="160"> |
 
----
-
-## 🎯 주요 기능 및 특징
-
-1. **QR & 4자리 코드 즉시 태그 (앱 설치 마찰 0)**
-   - 별도 앱 설치나 로그인 없이 링크/카메라로 즉시 참여
-   - 초대 링크(`?from=코드`) 진입 시 초대한 사람과 즉시 상호 태그 및 "첫 만남" 증표 자동 획득
-   - Playwright 자동화 심사 및 카메라 미지원 환경을 위한 **"코드로 태그" 4자리 직접 입력 폴백** 지원
-2. **증표(Badge) 수집 시스템**
-   - `첫 만남` (1명 대화), `아이스브레이커` (3명 대화), `파티 피플` (50% 이상 대화), `파티 마스터` (전원 대화), `미션 완료` (1:1 지정 상대 대화), `재회` (상호 매칭)
-   - 파티가 끝나도 브라우저 **"내 증표함"**에 영구 누적
-3. **1:1 미션 상대 배정**
-   - 친한 사람끼리만 뭉치는 것을 방지하기 위해 직전 참여자를 미션 상대로 자동 매칭
-4. **파티 후 비밀 상호 선택 (Mutual Match)**
-   - 파티 종료 후 "다시 만나고 싶은 사람"을 각자 비밀리에 체크
-   - **서로를 동시에 선택한 쌍만** 백엔드에서 안전하게 공개 (짝사랑 유출 원천 차단)
-5. **리텐션 루프**
-   - 결과 화면 하단 **"다음 파티 만들기"**를 통해 참여자가 다음 모임의 호스트로 전환
+<sub>Screenshots taken from the live service at mobile width (390px).</sub>
 
 ---
 
-## 🏗️ 시스템 아키텍처
+## 📋 The 3-step flow
+
+The judges ran this exact scenario against the deployed app, so every button label and completion message matches it word for word (in Korean).
+
+| Step | Action | Success signal |
+|---|---|---|
+| 1 | On the home screen, enter **"금요일 파티"** (*Friday Party*) as the party name and press **"파티 만들기"** (*Create party*) | **"초대 링크가 생성되었습니다"** (*Invite link created*) appears and the URL changes to `/party/` |
+| 2 | Press **"초대 링크 복사"** (*Copy invite link*) | **"복사되었습니다"** (*Copied*) appears and the invite URL is shown |
+| 3 | Open the invite link, enter **"김서준"** as the name, and press **"참여하기"** (*Join*) | **"참여 완료"** (*Joined*), **"만난 사람 1명"** (*1 person met*), and the **"첫 만남"** (*First Meeting*) badge appear |
+
+---
+
+## 🎯 Features
+
+1. **Instant tagging with QR or a 4-character code**
+   - Join from a link or camera, with no app install and no login
+   - Opening an invite link (`?from=<code>`) tags you with the person who invited you and awards the *First Meeting* badge
+   - A **"tag by code"** fallback for browsers without camera access, which is also what let the Playwright judge complete the flow
+2. **Six badges**
+   - *First Meeting* (1 person), *Icebreaker* (3 people), *Party People* (half the room), *Party Master* (everyone), *Mission Complete* (your assigned 1:1 partner), *Reunion* (a mutual match)
+   - Badges stay in **"My Badges"** in your browser after the party ends
+3. **1:1 mission partner**
+   - Pairs you with someone you haven't met yet, so friends don't just stick together
+4. **Secret mutual picks after the party**
+   - Each guest privately checks who they'd like to meet again
+   - The backend reveals **only pairs who picked each other**, so a one-sided pick is never exposed
+5. **Retention loop**
+   - **"다음 파티 만들기"** (*Create next party*) on the result screen turns any guest into the host of the next gathering
+
+---
+
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
     subgraph Client ["Frontend (React 19 + TypeScript + Vite + Tailwind/daisyUI)"]
-        UI_Home["HomePage (파티 생성 / 파티 코드 입장 / 내 증표함)"]
-        UI_Passport["PartyPassportPage (내 QR / 코드로 태그 / 증표 6종 / 1:1 미션)"]
-        UI_Result["PartyResultPage (상호 선택 / 서로 선택된 사람 공개 / 다음 파티 생성)"]
-        Store["Zustand (localStorage 내 증표함 & 세션 영속화)"]
-        Query["TanStack Query (4초 폴링 & 낙관적 업데이트)"]
+        UI_Home["HomePage (create party / join by code / my badges)"]
+        UI_Passport["PartyPassportPage (my QR / tag by code / 6 badges / 1:1 mission)"]
+        UI_Result["PartyResultPage (secret picks / mutual matches / next party)"]
+        Store["Zustand (badges & session persisted in localStorage)"]
+        Query["TanStack Query (4s polling & optimistic updates)"]
     end
 
     subgraph Server ["Backend (Spring Boot 3.4.1 + JPA + PostgreSQL)"]
-        API_Party["/api/parties (파티 생성 & 호스트 패스포트 발급)"]
-        API_Join["/api/parties/{code}/join (참여 & 초대자 자동 Meet)"]
-        API_Tag["/api/parties/{code}/tag (4자리 코드로 상호 Meet 생성)"]
-        API_Picks["/api/parties/{code}/picks (상호 비밀 호감 저장 & Mutual Match 연산)"]
+        API_Party["/api/parties (create party & issue host passport)"]
+        API_Join["/api/parties/{code}/join (join & auto-meet the inviter)"]
+        API_Tag["/api/parties/{code}/tag (mutual meet by 4-char code)"]
+        API_Picks["/api/parties/{code}/picks (secret picks & mutual match)"]
         DB[(PostgreSQL - party / participant / meet / pick)]
     end
 
@@ -72,44 +87,44 @@ flowchart TD
 
 ---
 
-## 📂 문서 안내
+## 📂 Documents
 
-| 문서 | 내용 |
+| Document | What's inside |
 |---|---|
-| [docs/submission/01-3단계-시나리오.md](docs/submission/01-3단계-시나리오.md) | **심사 제출용 3단계 시나리오** (복사 붙여넣기용) |
-| [docs/submission/02-기획안-8000자.md](docs/submission/02-기획안-8000자.md) | **공식 기획안** (루브릭 12항목 상한 해제 조건 100% 반영) |
-| [docs/submission/03-발표-스크립트-4000자.md](docs/submission/03-발표-스크립트-4000자.md) | **공식 발표 스크립트** (주제 연결, B/C 근거 압축) |
-| [docs/submission/04-디자이너-에셋-가이드.md](docs/submission/04-디자이너-에셋-가이드.md) | **디자이너 에셋 가이드** (뱃지 6종, 로고, 규격 안내) |
-| [docs/retrospective/](docs/retrospective/README.md) | **우승 회고록** — 채점기 역설계·아이디어 병렬 채점·Agent-First UX·자가 채점 루프 ([한국어](docs/retrospective/ko.md) · [English](docs/retrospective/en.md)) |
-| [docs/judging-criteria.md](docs/judging-criteria.md) | **공식 채점 루브릭** 12항목 앵커·상한 해제 규칙·주제 게이트 배율, 주제 분석과 아이템 선정 필터, Playwright 대응 규칙 |
-| [docs/submission-guide.md](docs/submission-guide.md) | **제출 페이지 실물** 기준 필드별 작성법, 글자 제한(기획안 8,000 / 스크립트 4,000), 3단계·기획안·스크립트 템플릿, 직전 체크리스트 |
-| [docs/personas/](docs/personas/README.md) | AI 심사관 3명(창업가·엔지니어·투자자) **추정 페르소나** — 렌즈별 질문·근거·감점 트리거·자가 점검표·가채점표 |
-| [docs/thinking/](docs/thinking/README.md) | 팀원별 **주제 제안·확정안** — 현재 확정: **파티 패스포트** (QR 태그 수집 · 증표 · 캐릭터 성장 · 파티 후 상호 선택) |
-| [docs/prd/](docs/prd/frontend.md) | 확정 주제 **PRD** — [frontend.md](docs/prd/frontend.md)(화면·텍스트·상태·수용 기준) · [backend.md](docs/prd/backend.md)(Spring REST 모델·API·보안 수정·비용) |
-| [server/README.md](server/README.md) | **백엔드 REST API 명세서** — 엔드포인트, 응답 형태, 배포 정보 |
-| [AGENTS.md](AGENTS.md) | 작업 규칙 — 스택, 디렉토리, 코드 규칙, 커밋·배포 흐름, 심사 대응 |
-| [docs/antigravity-101.md](docs/antigravity-101.md) · [docs/ralph-loop.md](docs/ralph-loop.md) | 세션 자료 정리 (참고용) |
+| [docs/retrospective/](docs/retrospective/README.md) | **Winning retrospective**: reverse-engineering the grader, scoring ideas in parallel, agent-first UX, the self-scoring loop ([English](docs/retrospective/en.md) · [한국어](docs/retrospective/ko.md)) |
+| [server/README.md](server/README.md) | Backend REST API reference: endpoints, response shapes, deployment |
+| [docs/submission/](docs/submission/) | What we submitted: 3-step scenario, proposal, pitch script, design asset guide (Korean) |
+| [docs/judging-criteria.md](docs/judging-criteria.md) | The 12-item judging rubric and how we planned around it (Korean) |
+| [docs/personas/](docs/personas/README.md) | Estimated personas for the three AI judges (Korean) |
+| [docs/prd/](docs/prd/frontend.md) | PRDs: [frontend](docs/prd/frontend.md) and [backend](docs/prd/backend.md) (Korean) |
+| [AGENTS.md](AGENTS.md) | Working rules: stack, directories, code conventions, commit and deploy flow (Korean) |
 
 ---
 
-## 🛠️ 실행 및 빌드
+## 🛠️ Run locally
 
 ```bash
-# 프론트엔드
+# Frontend
 npm install
 npm run dev      # http://localhost:5173
-npm run build    # TypeScript 검사 및 dist/ 번들링
-npm run lint     # oxlint 검사
+npm run build    # type-check and bundle into dist/
+npm run lint     # oxlint
 
-# 백엔드
+# Backend
 cd server
-./gradlew test   # H2 인메모리 테스트
+./gradlew test   # in-memory H2 tests
 ./gradlew bootJar
 ```
 
 ---
 
+## 📜 License
+
+[MIT](LICENSE)
+
+---
+
 <!-- AUTO-VERSION-SECTION: DO NOT EDIT MANUALLY -->
-## 최신 버전 : v0.0.35 (2026-09-02)
+## 최신 버전 : v0.0.33 (2026-09-01)
 
 [전체 버전 기록 보기](CHANGELOG.md)
