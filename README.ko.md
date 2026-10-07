@@ -128,7 +128,12 @@ cd server
 주최 측 공식 후기는 [LinkedIn](https://www.linkedin.com/feed/update/urn:li:ugcPost:7510266273977720832/)에서 볼 수 있습니다.
 
 <p align="center">
-  <img src="docs/images/event/award-stage.jpg" alt="시상식 무대에서 1위로 호명된 우리 팀" width="480">
+  <img src="docs/images/event/hacking.jpg" alt="해커톤 중 S1 테이블에서 개발하는 모습" width="260">
+  <img src="docs/images/event/award-stage.jpg" alt="시상식 무대에서 1위로 호명된 우리 팀" width="260">
+  <img src="docs/images/event/award-team.jpg" alt="Hack the Beat 배경 앞에서 1위 보드를 든 팀 단체 사진" width="260">
+</p>
+<p align="center">
+  <img src="docs/images/event/award-table.jpg" alt="S1 테이블에서 1위 보드와 함께 찍은 기념 사진" width="600">
 </p>
 
 ---

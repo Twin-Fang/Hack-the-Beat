@@ -123,7 +123,12 @@ cd server
 The official recap from the organizers is on [LinkedIn](https://www.linkedin.com/feed/update/urn:li:ugcPost:7510266273977720832/).
 
 <p align="center">
-  <img src="docs/images/event/award-stage.jpg" alt="Our team on stage at the awards ceremony, announced as 1st place" width="480">
+  <img src="docs/images/event/hacking.jpg" alt="Building the app at our S1 table during the hackathon" width="260">
+  <img src="docs/images/event/award-stage.jpg" alt="Our team on stage at the awards ceremony, announced as 1st place" width="260">
+  <img src="docs/images/event/award-team.jpg" alt="Team photo with the 1st place board in front of the Hack the Beat backdrop" width="260">
+</p>
+<p align="center">
+  <img src="docs/images/event/award-table.jpg" alt="Celebrating at our S1 table with the 1st place board" width="600">
 </p>
 
 ---
