@@ -135,6 +135,6 @@ The official recap from the organizers is on [LinkedIn](https://www.linkedin.com
 ---
 
 <!-- AUTO-VERSION-SECTION: DO NOT EDIT MANUALLY -->
-## 최신 버전 : v0.0.35 (2026-10-07)
+## 최신 버전 : v0.0.36 (2026-10-07)
 
 [전체 버전 기록 보기](CHANGELOG.md)
