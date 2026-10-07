@@ -118,6 +118,16 @@ cd server
 
 ---
 
+## 📸 Event photos
+
+The official recap from the organizers is on [LinkedIn](https://www.linkedin.com/feed/update/urn:li:ugcPost:7510266273977720832/).
+
+<p align="center">
+  <img src="docs/images/event/award-stage.jpg" alt="Our team on stage at the awards ceremony, announced as 1st place" width="480">
+</p>
+
+---
+
 ## 📜 License
 
 [MIT](LICENSE)

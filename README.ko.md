@@ -123,6 +123,16 @@ cd server
 
 ---
 
+## 📸 현장 사진
+
+주최 측 공식 후기는 [LinkedIn](https://www.linkedin.com/feed/update/urn:li:ugcPost:7510266273977720832/)에서 볼 수 있습니다.
+
+<p align="center">
+  <img src="docs/images/event/award-stage.jpg" alt="시상식 무대에서 1위로 호명된 우리 팀" width="480">
+</p>
+
+---
+
 ## 📜 라이선스
 
 [MIT](LICENSE)
